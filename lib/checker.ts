@@ -10,25 +10,13 @@ import {
 } from './time-filter';
 import type { CheckResult, Slot } from './types';
 
-// Simple in-memory dedup cache: key = `userId:restaurantId:date:time`
-// Prevents re-notifying about the same slot within 15 minutes.
-const notifiedCache = new Map<string, number>();
 const DEDUP_MS = 15 * 60 * 1000;
-
-function purgeStaleCacheEntries() {
-  const now = Date.now();
-  for (const [key, ts] of notifiedCache) {
-    if (now - ts > DEDUP_MS) notifiedCache.delete(key);
-  }
-}
 
 /**
  * Core check loop for a single user.
  * Loads their settings + active restaurants, checks each one, fires notifications.
  */
 export async function checkUserWatchlist(userId: string): Promise<CheckResult[]> {
-  purgeStaleCacheEntries();
-
   // Load settings
   const { data: settings, error: settingsErr } = await db
     .from('user_settings')
@@ -61,6 +49,20 @@ export async function checkUserWatchlist(userId: string): Promise<CheckResult[]>
   if (restErr) throw new Error(`Failed to load restaurants: ${restErr.message}`);
   if (!restaurants?.length) throw new Error(`No active restaurants found on your watchlist.`);
 
+  // Purge stale dedup entries from DB
+  const cutoff = new Date(Date.now() - DEDUP_MS).toISOString();
+  await db.from('notified_slots').delete().eq('user_id', userId).lt('notified_at', cutoff);
+
+  // Load existing dedup entries for this user
+  const { data: existingNotified } = await db
+    .from('notified_slots')
+    .select('restaurant_id, slot_date, slot_time')
+    .eq('user_id', userId);
+
+  const notifiedSet = new Set(
+    (existingNotified ?? []).map((r) => `${r.restaurant_id}:${r.slot_date}:${r.slot_time}`)
+  );
+
   const apiKey: string = process.env.RESY_API_KEY ?? settings.resy_api_key ?? '';
   const dates = getDateRange(settings.day_range, settings.days_of_week);
 
@@ -89,21 +91,32 @@ export async function checkUserWatchlist(userId: string): Promise<CheckResult[]>
           })
         );
 
+        const newSlotRows: { user_id: string; restaurant_id: string; slot_date: string; slot_time: string }[] = [];
+
         for (const slots of slotsByDate) {
           const inWindow = slots.filter((s: Slot) =>
             isSlotInWindow(s.time, settings.earliest_time, settings.latest_time)
           );
           for (const slot of inWindow) {
-            const cacheKey = `${userId}:${restaurant.id}:${slot.date}:${slot.time}`;
-            if (!notifiedCache.has(cacheKey)) {
+            const key = `${restaurant.id}:${slot.date}:${slot.time}`;
+            if (!notifiedSet.has(key)) {
               foundSlots.push(slot);
-              notifiedCache.set(cacheKey, Date.now());
+              notifiedSet.add(key);
+              newSlotRows.push({
+                user_id: userId,
+                restaurant_id: restaurant.id,
+                slot_date: slot.date,
+                slot_time: slot.time,
+              });
             }
           }
         }
 
-        // Log check + update last_checked and available_slots in parallel
+        // Persist dedup rows, update restaurant record, and log — all in parallel
         await Promise.all([
+          newSlotRows.length > 0
+            ? db.from('notified_slots').upsert(newSlotRows, { onConflict: 'user_id,restaurant_id,slot_date,slot_time' })
+            : Promise.resolve(),
           db.from('activity_log').insert({
             user_id: userId,
             restaurant_id: restaurant.id,
