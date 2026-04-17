@@ -19,9 +19,12 @@ const SUGGESTIONS: Suggestion[] = [
 
 interface AddRestaurantFormProps {
   onAdd: (restaurant: Restaurant) => void;
+  onCheckNow?: () => void;
+  checking?: boolean;
+  checkMsg?: string | null;
 }
 
-export default function AddRestaurantForm({ onAdd }: AddRestaurantFormProps) {
+export default function AddRestaurantForm({ onAdd, onCheckNow, checking, checkMsg }: AddRestaurantFormProps) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [platform, setPlatform] = useState<Platform>('resy');
@@ -102,10 +105,20 @@ export default function AddRestaurantForm({ onAdd }: AddRestaurantFormProps) {
         >
           Your Watchlist
         </h2>
-        <BtnPrimary small onClick={() => setOpen((o) => !o)}>
-          {open ? '— Cancel' : '+ Add Restaurant'}
-        </BtnPrimary>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {onCheckNow && (
+            <BtnSecondary small onClick={onCheckNow} disabled={checking}>
+              {checking ? 'Checking…' : 'Check Now'}
+            </BtnSecondary>
+          )}
+          <BtnPrimary small onClick={() => setOpen((o) => !o)}>
+            {open ? '— Cancel' : '+ Add Restaurant'}
+          </BtnPrimary>
+        </div>
       </div>
+      {checkMsg && (
+        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px' }}>{checkMsg}</p>
+      )}
 
       {/* Slide-down form */}
       {open && (

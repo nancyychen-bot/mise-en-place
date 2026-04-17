@@ -118,6 +118,7 @@ export default function Masthead({ user }: MastheadProps) {
         </h1>
         <p
           style={{
+            fontFamily: 'var(--font-family-sans)',
             fontSize: '14px',
             color: 'var(--text-secondary)',
             marginTop: '10px',

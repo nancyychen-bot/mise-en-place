@@ -103,20 +103,12 @@ export default function WatchlistClient({
 
       <PreferencesBar settings={settings} />
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-        <button
-          className="btn btn-primary"
-          onClick={handleCheckNow}
-          disabled={checking}
-        >
-          {checking ? 'Checking…' : 'Check Now'}
-        </button>
-        {checkMsg && (
-          <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{checkMsg}</span>
-        )}
-      </div>
-
-      <AddRestaurantForm onAdd={handleAdd} />
+      <AddRestaurantForm
+        onAdd={handleAdd}
+        onCheckNow={handleCheckNow}
+        checking={checking}
+        checkMsg={checkMsg}
+      />
 
       {isEmpty ? (
         <div
