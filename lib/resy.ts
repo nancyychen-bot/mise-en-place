@@ -105,22 +105,47 @@ export async function resolveResyVenueId(
   }
 
   try {
+    // Try /3/venue with url_slug
     const res = await fetch(
       `${SEARCH_BASE}?url_slug=${encodeURIComponent(slug)}&location=us-ny`,
       {
         headers: {
           Authorization: `ResyAPI api_key="${apiKey}"`,
-          'User-Agent': 'Mozilla/5.0',
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36',
           'X-Origin': 'https://resy.com',
+          Referer: 'https://resy.com/',
+          'Accept': 'application/json, text/plain, */*',
         },
       }
     );
 
-    if (!res.ok) return null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = (await res.json()) as any;
-    const id = data?.id?.resy ?? data?.venue?.id?.resy;
-    return id ? String(id) : null;
+    if (res.ok) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data = (await res.json()) as any;
+      const id = data?.id?.resy ?? data?.venue?.id?.resy ?? data?.id;
+      if (id) return String(id);
+    }
+
+    // Fallback: try /4/find with the slug directly to get the numeric id from response
+    const findRes = await fetch(
+      `${BASE}/4/find?lat=40.7128&long=-74.0060&day=${new Date().toISOString().slice(0,10)}&party_size=2&venue_id=${encodeURIComponent(slug)}`,
+      {
+        headers: {
+          Authorization: `ResyAPI api_key="${apiKey}"`,
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36',
+          'X-Origin': 'https://resy.com',
+          Referer: 'https://resy.com/',
+        },
+      }
+    );
+    if (findRes.ok) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const findData = (await findRes.json()) as any;
+      const venueId = findData?.results?.venues?.[0]?.venue?.id?.resy;
+      if (venueId) return String(venueId);
+    }
+
+    return null;
   } catch {
     return null;
   }
