@@ -1,35 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+async function tryFetch(url: string, headers: Record<string, string>) {
+  try {
+    const r = await fetch(url, { headers });
+    const text = await r.text();
+    let body: unknown;
+    try { body = JSON.parse(text); } catch { body = text.slice(0, 1000); }
+    return { status: r.status, body };
+  } catch (e) {
+    return { error: String(e) };
+  }
+}
+
 export async function GET(req: NextRequest) {
   const slug = req.nextUrl.searchParams.get('slug') ?? 'red-hook-tavern-brooklyn';
+  const name = req.nextUrl.searchParams.get('name') ?? 'red hook tavern';
 
-  const headers = {
+  const jsonHeaders = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36',
-    Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-    'Accept-Language': 'en-US,en;q=0.5',
+    Accept: 'application/json, text/plain, */*',
+    Referer: 'https://www.opentable.com/',
   };
 
-  try {
-    const res = await fetch(`https://www.opentable.com/r/${encodeURIComponent(slug)}`, { headers });
-    const text = await res.text();
+  const [r1, r2, r3, r4] = await Promise.all([
+    tryFetch(`https://www.opentable.com/dapi/search/typeahead?term=${encodeURIComponent(name)}&latitude=40.7128&longitude=-74.0060`, jsonHeaders),
+    tryFetch(`https://www.opentable.com/restref/info/?urlSlug=${slug}`, jsonHeaders),
+    tryFetch(`https://www.opentable.com/dapi/fe/gql`, { ...jsonHeaders, 'Content-Type': 'application/json' }),
+    tryFetch(`https://www.opentable.com/s?query=${encodeURIComponent(name)}&covers=2&metroId=4`, { ...jsonHeaders, Accept: 'application/json' }),
+  ]);
 
-    // Sample the first 3000 chars and search for ID patterns
-    const sample = text.slice(0, 3000);
-    const ridMatches = [...text.matchAll(/"rid"\s*:\s*(\d+)/g)].map(m => m[1]);
-    const restMatches = [...text.matchAll(/"restaurantId"\s*:\s*(\d+)/g)].map(m => m[1]);
-    const rest2Matches = [...text.matchAll(/"restaurant_id"\s*:\s*(\d+)/g)].map(m => m[1]);
-    const idMatches = [...text.matchAll(/"id"\s*:\s*(\d+)/g)].slice(0, 5).map(m => m[1]);
-
-    return NextResponse.json({
-      status: res.status,
-      totalLength: text.length,
-      sample,
-      ridMatches,
-      restaurantIdMatches: restMatches,
-      restaurant_id_matches: rest2Matches,
-      firstFewIds: idMatches,
-    });
-  } catch (e) {
-    return NextResponse.json({ error: String(e) });
-  }
+  return NextResponse.json({ slug, typeahead: r1, restref_info: r2, gql: r3, search: r4 });
 }
