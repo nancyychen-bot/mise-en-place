@@ -54,7 +54,10 @@ export async function POST(req: NextRequest) {
     if (!/^\d+$/.test(raw)) {
       venueSlug = raw;
       const apiKey = process.env.RESY_API_KEY ?? '';
-      const resolved = apiKey ? await resolveResyVenueId(raw, apiKey) : null;
+      const resolved = apiKey ? await Promise.race([
+        resolveResyVenueId(raw, apiKey),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000)),
+      ]) : null;
       venueId = resolved ?? raw;
     } else {
       venueId = raw;
@@ -63,7 +66,10 @@ export async function POST(req: NextRequest) {
     const raw = parseOpenTableVenueInput(venueIdOrUrl);
     if (!/^\d+$/.test(raw)) {
       venueSlug = raw;
-      const resolved = await resolveOpenTableVenueId(raw);
+      const resolved = await Promise.race([
+        resolveOpenTableVenueId(raw),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000)),
+      ]);
       venueId = resolved ?? raw;
     } else {
       venueId = raw;
