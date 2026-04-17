@@ -23,6 +23,7 @@ function normalizeRestaurant(r: any): Restaurant {
     name: r.name,
     platform: r.platform,
     venueId: r.venue_id,
+    venueSlug: r.venue_slug ?? null,
     partySize: r.party_size,
     active: r.active,
     lastChecked: r.last_checked ? new Date(r.last_checked) : null,

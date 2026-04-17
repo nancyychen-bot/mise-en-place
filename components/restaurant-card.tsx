@@ -13,10 +13,12 @@ interface RestaurantCardProps {
 
 function getBookingUrl(restaurant: Restaurant, slot?: Slot): string {
   if (restaurant.platform === 'resy') {
-    const base = `https://resy.com/cities/ny/venues/${restaurant.venueId}`;
+    const slug = restaurant.venueSlug ?? restaurant.venueId;
+    const base = `https://resy.com/cities/ny/venues/${slug}`;
     return slot ? `${base}?date=${slot.date}&seats=${restaurant.partySize}` : base;
   } else {
-    const base = `https://www.opentable.com/restaurant/profile/${restaurant.venueId}`;
+    const slug = restaurant.venueSlug ?? restaurant.venueId;
+    const base = `https://www.opentable.com/r/${slug}`;
     return slot
       ? `${base}?covers=${restaurant.partySize}&dateTime=${slot.date}T${slot.time}:00`
       : base;

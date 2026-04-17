@@ -32,6 +32,7 @@ export interface Restaurant {
   name: string;
   platform: Platform;
   venueId: string;
+  venueSlug: string | null;
   partySize: number;
   active: boolean;
   lastChecked: Date | null;

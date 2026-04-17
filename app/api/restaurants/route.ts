@@ -46,22 +46,23 @@ export async function POST(req: NextRequest) {
 
   const { name, platform, venueIdOrUrl, partySize } = parsed.data;
 
-  // Resolve venue ID
+  // Resolve venue ID, keeping the original slug for URL construction
   let venueId: string;
+  let venueSlug: string | null = null;
   if (platform === 'resy') {
     const raw = parseResyVenueInput(venueIdOrUrl);
-
-    // If it's a slug (not already numeric), try to resolve via Resy API
     if (!/^\d+$/.test(raw)) {
+      venueSlug = raw;
       const apiKey = process.env.RESY_API_KEY ?? '';
       const resolved = apiKey ? await resolveResyVenueId(raw, apiKey) : null;
-      venueId = resolved ?? raw; // fall back to slug if resolution fails
+      venueId = resolved ?? raw;
     } else {
       venueId = raw;
     }
   } else {
     const raw = parseOpenTableVenueInput(venueIdOrUrl);
     if (!/^\d+$/.test(raw)) {
+      venueSlug = raw;
       const resolved = await resolveOpenTableVenueId(raw);
       venueId = resolved ?? raw;
     } else {
@@ -76,6 +77,7 @@ export async function POST(req: NextRequest) {
       name,
       platform,
       venue_id: venueId,
+      venue_slug: venueSlug,
       party_size: partySize,
     })
     .select()
