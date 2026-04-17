@@ -80,7 +80,11 @@ export async function PATCH(req: NextRequest) {
   // Update settings
   const settingsUpdate: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (d.resyApiKey !== undefined) settingsUpdate.resy_api_key = d.resyApiKey;
-  if (d.ntfyTopic !== undefined) settingsUpdate.ntfy_topic = d.ntfyTopic;
+  if (d.ntfyTopic !== undefined) {
+    // Strip any URL prefix users might accidentally include (e.g. "ntfy.sh/topic")
+    const topic = d.ntfyTopic.replace(/^https?:\/\/[^/]+\//, '').replace(/^ntfy\.sh\//, '');
+    settingsUpdate.ntfy_topic = topic;
+  }
   if (d.ntfyPriority !== undefined) settingsUpdate.ntfy_priority = d.ntfyPriority;
   if (d.monitoringEnabled !== undefined) settingsUpdate.monitoring_enabled = d.monitoringEnabled;
 
