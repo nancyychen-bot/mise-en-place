@@ -68,7 +68,7 @@ export default async function LandingPage() {
               marginBottom: '2px',
             }}
           >
-            Reservations, ready when you are
+            Impossible reservations made possible
           </p>
           <h1
             style={{
@@ -93,6 +93,15 @@ export default async function LandingPage() {
               ®
             </sup>
           </h1>
+          <p
+            style={{
+              fontSize: '14px',
+              color: 'var(--text-secondary)',
+              marginTop: '10px',
+            }}
+          >
+            Get notified every time one of your favourite restaurants has an upcoming opening
+          </p>
         </div>
       </header>
 
