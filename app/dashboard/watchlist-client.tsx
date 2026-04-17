@@ -71,15 +71,22 @@ export default function WatchlistClient({
     setChecking(true);
     setCheckMsg(null);
     try {
-      const res = await fetch('/api/check-now', { method: 'POST' });
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 25000);
+      const res = await fetch('/api/check-now', { method: 'POST', signal: controller.signal });
+      clearTimeout(timeout);
       const data = await res.json();
       if (res.ok) {
         setCheckMsg('Check complete! Refresh to see updated results.');
       } else {
         setCheckMsg(data.error ?? 'Something went wrong.');
       }
-    } catch {
-      setCheckMsg('Network error.');
+    } catch (e) {
+      if (e instanceof Error && e.name === 'AbortError') {
+        setCheckMsg('Check is taking too long — it may still complete in the background.');
+      } else {
+        setCheckMsg('Network error.');
+      }
     } finally {
       setChecking(false);
     }

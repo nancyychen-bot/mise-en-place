@@ -69,27 +69,27 @@ export async function checkUserWatchlist(userId: string): Promise<CheckResult[]>
     const foundSlots: Slot[] = [];
 
     try {
-      for (const date of dates) {
-        let slots: Slot[] = [];
+      const slotsByDate = await Promise.all(
+        dates.map(async (date) => {
+          if (restaurant.platform === 'resy') {
+            if (!apiKey) return [];
+            return findResyAvailability(apiKey, restaurant.venue_id, date, restaurant.party_size).catch(() => []);
+          } else if (restaurant.platform === 'opentable') {
+            return findOpenTableAvailability(
+              restaurant.venue_id,
+              date,
+              settings.earliest_time,
+              restaurant.party_size
+            ).catch(() => []);
+          }
+          return [];
+        })
+      );
 
-        if (restaurant.platform === 'resy') {
-          if (!apiKey) continue;
-          slots = await findResyAvailability(apiKey, restaurant.venue_id, date, restaurant.party_size);
-        } else if (restaurant.platform === 'opentable') {
-          slots = await findOpenTableAvailability(
-            restaurant.venue_id,
-            date,
-            settings.earliest_time,
-            restaurant.party_size
-          );
-        }
-
-        // Filter to time window
-        const inWindow = slots.filter((s) =>
+      for (const slots of slotsByDate) {
+        const inWindow = slots.filter((s: Slot) =>
           isSlotInWindow(s.time, settings.earliest_time, settings.latest_time)
         );
-
-        // Dedup — skip slots we already notified about recently
         for (const slot of inWindow) {
           const cacheKey = `${userId}:${restaurant.id}:${slot.date}:${slot.time}`;
           if (!notifiedCache.has(cacheKey)) {
