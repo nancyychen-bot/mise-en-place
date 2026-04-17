@@ -52,13 +52,7 @@ export async function POST(req: NextRequest) {
 
     // If it's a slug (not already numeric), try to resolve via Resy API
     if (!/^\d+$/.test(raw)) {
-      const { data: settings } = await db
-        .from('user_settings')
-        .select('resy_api_key')
-        .eq('user_id', user.id)
-        .single();
-
-      const apiKey = settings?.resy_api_key ?? '';
+      const apiKey = process.env.RESY_API_KEY ?? '';
       const resolved = apiKey ? await resolveResyVenueId(raw, apiKey) : null;
       venueId = resolved ?? raw; // fall back to slug if resolution fails
     } else {
