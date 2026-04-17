@@ -102,7 +102,7 @@ export async function checkUserWatchlist(userId: string): Promise<CheckResult[]>
           }
         }
 
-        // Log check + update last_checked in parallel
+        // Log check + update last_checked and available_slots in parallel
         await Promise.all([
           db.from('activity_log').insert({
             user_id: userId,
@@ -110,7 +110,11 @@ export async function checkUserWatchlist(userId: string): Promise<CheckResult[]>
             type: 'check',
             message: `Checked <strong>${restaurant.name}</strong> — ${foundSlots.length} new slot(s) found`,
           }),
-          db.from('restaurants').update({ last_checked: checkedAt.toISOString() }).eq('id', restaurant.id),
+          db.from('restaurants').update({
+            last_checked: checkedAt.toISOString(),
+            available_slots: foundSlots,
+            slots_updated_at: checkedAt.toISOString(),
+          }).eq('id', restaurant.id),
         ]);
 
         if (foundSlots.length > 0) {

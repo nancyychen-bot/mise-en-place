@@ -10,6 +10,8 @@ import RestaurantGrid from '@/components/restaurant-grid';
 interface WatchlistClientProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   initialRestaurants: any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  initialSlotMap?: Record<string, any[]>;
   settings: UserSettings;
   slotsFoundToday: number;
 }
@@ -33,6 +35,7 @@ function normalizeRestaurant(r: any): Restaurant {
 
 export default function WatchlistClient({
   initialRestaurants,
+  initialSlotMap = {},
   settings,
   slotsFoundToday,
 }: WatchlistClientProps) {
@@ -67,7 +70,7 @@ export default function WatchlistClient({
 
   const [checking, setChecking] = useState(false);
   const [checkMsg, setCheckMsg] = useState<string | null>(null);
-  const [slotMap, setSlotMap] = useState<Record<string, Slot[]>>({});
+  const [slotMap, setSlotMap] = useState<Record<string, Slot[]>>(initialSlotMap as Record<string, Slot[]>);
 
   async function handleCheckNow() {
     setChecking(true);

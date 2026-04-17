@@ -35,9 +35,18 @@ export default async function DashboardPage() {
     resyApiKey: null,
   };
 
+  // Build initial slot map from persisted available_slots
+  const initialSlotMap: Record<string, unknown[]> = {};
+  for (const r of restaurants ?? []) {
+    if (Array.isArray(r.available_slots) && r.available_slots.length > 0) {
+      initialSlotMap[r.id] = r.available_slots;
+    }
+  }
+
   return (
     <WatchlistClient
       initialRestaurants={restaurants ?? []}
+      initialSlotMap={initialSlotMap}
       settings={defaultSettings}
       slotsFoundToday={activity?.length ?? 0}
     />
