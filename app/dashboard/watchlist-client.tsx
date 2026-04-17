@@ -68,6 +68,12 @@ export default function WatchlistClient({
     }
   }
 
+  function handleVenueIdFixed(id: string, newVenueId: string) {
+    setRestaurants((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, venueId: newVenueId } : r))
+    );
+  }
+
   const [checking, setChecking] = useState(false);
   const [checkMsg, setCheckMsg] = useState<string | null>(null);
   const [slotMap, setSlotMap] = useState<Record<string, Slot[]>>(initialSlotMap as Record<string, Slot[]>);
@@ -169,6 +175,7 @@ export default function WatchlistClient({
           slotMap={slotMap}
           onToggle={handleToggle}
           onDelete={handleDelete}
+          onVenueIdFixed={handleVenueIdFixed}
         />
       )}
     </div>

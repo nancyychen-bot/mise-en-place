@@ -8,6 +8,7 @@ interface RestaurantGridProps {
   slotMap?: Record<string, Slot[]>;
   onToggle: (id: string, active: boolean) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onVenueIdFixed?: (id: string, newVenueId: string) => void;
 }
 
 export default function RestaurantGrid({
@@ -15,6 +16,7 @@ export default function RestaurantGrid({
   slotMap = {},
   onToggle,
   onDelete,
+  onVenueIdFixed,
 }: RestaurantGridProps) {
   return (
     <div
@@ -32,6 +34,7 @@ export default function RestaurantGrid({
           slots={slotMap[r.id] ?? []}
           onToggle={onToggle}
           onDelete={onDelete}
+          onVenueIdFixed={onVenueIdFixed}
         />
       ))}
     </div>

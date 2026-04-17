@@ -9,6 +9,7 @@ interface RestaurantCardProps {
   slots?: Slot[];
   onToggle: (id: string, active: boolean) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onVenueIdFixed?: (id: string, newVenueId: string) => void;
 }
 
 function getBookingUrl(restaurant: Restaurant, slot?: Slot): string {
@@ -41,10 +42,15 @@ export default function RestaurantCard({
   slots = [],
   onToggle,
   onDelete,
+  onVenueIdFixed,
 }: RestaurantCardProps) {
   const [toggling, setToggling] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [fixingId, setFixingId] = useState(false);
+  const [idInput, setIdInput] = useState('');
+  const [idError, setIdError] = useState('');
   const hasSlots = slots.length > 0;
+  const needsId = !/^\d+$/.test(restaurant.venueId);
 
   async function handleToggle() {
     setToggling(true);
@@ -62,6 +68,30 @@ export default function RestaurantCard({
       await onDelete(restaurant.id);
     } finally {
       setDeleting(false);
+    }
+  }
+
+  async function handleFixId() {
+    const numericId = idInput.trim();
+    if (!/^\d+$/.test(numericId)) { setIdError('Enter a numeric ID only'); return; }
+    setIdError('');
+    setFixingId(true);
+    try {
+      const res = await fetch('/api/admin/fix-venue-ids', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [restaurant.venueId]: numericId }),
+      });
+      if (res.ok) {
+        onVenueIdFixed?.(restaurant.id, numericId);
+        setIdInput('');
+      } else {
+        setIdError('Save failed');
+      }
+    } catch {
+      setIdError('Network error');
+    } finally {
+      setFixingId(false);
     }
   }
 
@@ -187,6 +217,49 @@ export default function RestaurantCard({
         {restaurant.partySize} guests · ID {restaurant.venueId} · Checked{' '}
         {formatRelativeTime(restaurant.lastChecked)}
       </p>
+
+      {needsId && (
+        <div style={{ marginBottom: '12px' }}>
+          <p style={{ fontSize: '11px', color: 'var(--tag-red)', fontWeight: 600, marginBottom: '6px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+            ⚠ Numeric ID needed to check availability
+          </p>
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <input
+              type="text"
+              placeholder="Paste numeric ID (e.g. 55048)"
+              value={idInput}
+              onChange={(e) => setIdInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleFixId()}
+              style={{
+                fontSize: '12px',
+                padding: '5px 8px',
+                border: '1px solid var(--border-light)',
+                background: 'var(--bg)',
+                color: 'var(--text)',
+                fontFamily: 'var(--font-family-mono)',
+                outline: 'none',
+                width: '180px',
+              }}
+            />
+            <button
+              onClick={handleFixId}
+              disabled={fixingId}
+              style={{
+                fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em',
+                textTransform: 'uppercase', padding: '5px 10px',
+                background: 'var(--text)', color: 'var(--bg)',
+                border: 'none', cursor: 'pointer', fontFamily: 'var(--font-family-sans)',
+              }}
+            >
+              {fixingId ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+          {idError && <p style={{ fontSize: '11px', color: 'var(--tag-red)', marginTop: '4px' }}>{idError}</p>}
+          <p style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px' }}>
+            Find it: open the {restaurant.platform === 'resy' ? 'Resy' : 'OpenTable'} page → View Page Source → search for &quot;rid&quot;
+          </p>
+        </div>
+      )}
 
       {hasSlots ? (
         <div
