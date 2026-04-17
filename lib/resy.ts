@@ -105,44 +105,23 @@ export async function resolveResyVenueId(
   }
 
   try {
-    // Try /3/venue with url_slug
-    const res = await fetch(
-      `${SEARCH_BASE}?url_slug=${encodeURIComponent(slug)}&location=us-ny`,
-      {
-        headers: {
-          Authorization: `ResyAPI api_key="${apiKey}"`,
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36',
-          'X-Origin': 'https://resy.com',
-          Referer: 'https://resy.com/',
-          'Accept': 'application/json, text/plain, */*',
-        },
-      }
-    );
+    // Scrape the Resy venue page and extract the numeric ID from __NEXT_DATA__
+    const pageUrl = `https://resy.com/cities/ny/venues/${encodeURIComponent(slug)}`;
+    const pageRes = await fetch(pageUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36',
+        Accept: 'text/html,application/xhtml+xml',
+      },
+    });
 
-    if (res.ok) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const data = (await res.json()) as any;
-      const id = data?.id?.resy ?? data?.venue?.id?.resy ?? data?.id;
-      if (id) return String(id);
-    }
-
-    // Fallback: try /4/find with the slug directly to get the numeric id from response
-    const findRes = await fetch(
-      `${BASE}/4/find?lat=40.7128&long=-74.0060&day=${new Date().toISOString().slice(0,10)}&party_size=2&venue_id=${encodeURIComponent(slug)}`,
-      {
-        headers: {
-          Authorization: `ResyAPI api_key="${apiKey}"`,
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36',
-          'X-Origin': 'https://resy.com',
-          Referer: 'https://resy.com/',
-        },
-      }
-    );
-    if (findRes.ok) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const findData = (await findRes.json()) as any;
-      const venueId = findData?.results?.venues?.[0]?.venue?.id?.resy;
-      if (venueId) return String(venueId);
+    if (pageRes.ok) {
+      const html = await pageRes.text();
+      // Resy embeds venue data in __NEXT_DATA__ as JSON
+      const match = html.match(/"id"\s*:\s*\{\s*"resy"\s*:\s*(\d+)/);
+      if (match) return match[1];
+      // Fallback: look for venue_id in the page
+      const match2 = html.match(/"venue_id"\s*:\s*(\d+)/);
+      if (match2) return match2[1];
     }
 
     return null;
