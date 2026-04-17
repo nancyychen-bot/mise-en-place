@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { Restaurant, UserSettings } from '@/lib/types';
+import type { Restaurant, UserSettings, Slot } from '@/lib/types';
 import StatusBar from '@/components/status-bar';
 import PreferencesBar from '@/components/preferences-bar';
 import AddRestaurantForm from '@/components/add-restaurant-form';
@@ -66,6 +66,7 @@ export default function WatchlistClient({
 
   const [checking, setChecking] = useState(false);
   const [checkMsg, setCheckMsg] = useState<string | null>(null);
+  const [slotMap, setSlotMap] = useState<Record<string, Slot[]>>({});
 
   async function handleCheckNow() {
     setChecking(true);
@@ -76,10 +77,21 @@ export default function WatchlistClient({
       const res = await fetch('/api/check-now', { method: 'POST', signal: controller.signal });
       clearTimeout(timeout);
       const data = await res.json();
-      if (res.ok) {
-        setCheckMsg('Check complete! Refresh to see updated results.');
+      if (res.ok && Array.isArray(data)) {
+        // Build slotMap from results and update last_checked timestamps
+        const map: Record<string, Slot[]> = {};
+        const now = new Date();
+        data.forEach((r: { restaurantId: string; slots: Slot[] }) => {
+          map[r.restaurantId] = r.slots;
+        });
+        setSlotMap(map);
+        setRestaurants((prev) =>
+          prev.map((r) => ({ ...r, lastChecked: now }))
+        );
+        const totalSlots = data.reduce((sum: number, r: { slots: Slot[] }) => sum + r.slots.length, 0);
+        setCheckMsg(totalSlots > 0 ? `Found ${totalSlots} slot(s)!` : 'Check complete — no new slots in your window.');
       } else {
-        setCheckMsg(data.error ?? 'Something went wrong.');
+        setCheckMsg((data as { error?: string }).error ?? 'Something went wrong.');
       }
     } catch (e) {
       if (e instanceof Error && e.name === 'AbortError') {
@@ -150,6 +162,7 @@ export default function WatchlistClient({
       ) : (
         <RestaurantGrid
           restaurants={restaurants}
+          slotMap={slotMap}
           onToggle={handleToggle}
           onDelete={handleDelete}
         />
