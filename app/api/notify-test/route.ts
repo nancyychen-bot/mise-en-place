@@ -32,7 +32,7 @@ export async function POST() {
 
   await sendNotification(
     settings.ntfy_topic,
-    'Mise en Place — Test Notification',
+    'Mise en Place - Test Notification',
     "It's working! You'll be notified the moment a table opens up.",
     settings.ntfy_priority,
     process.env.NEXT_PUBLIC_APP_URL
