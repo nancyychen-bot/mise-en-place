@@ -9,6 +9,7 @@ const PUBLIC_PATHS = [
   '/api/auth/signup',
   '/api/cron/check-all',
   '/api/admin/fix-venue-ids',
+  '/api/admin/debug-resy',
 ];
 
 export async function proxy(request: NextRequest) {
