@@ -19,13 +19,11 @@ export default function RestaurantGrid({
   return (
     <div
       style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(2, 1fr)',
         gap: '0',
         borderTop: '1px solid var(--border-hair)',
         borderLeft: '1px solid var(--border-hair)',
       }}
-      className="max-[720px]:grid-cols-1"
+      className="grid grid-cols-1 min-[720px]:grid-cols-2"
     >
       {restaurants.map((r) => (
         <RestaurantCard

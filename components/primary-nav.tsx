@@ -24,18 +24,15 @@ export default function PrimaryNav() {
       style={{
         display: 'flex',
         justifyContent: 'center',
-        gap: '28px',
-        padding: '14px 40px 0',
+        flexWrap: 'wrap',
+        gap: '0',
+        padding: '0',
         borderBottom: '1px solid var(--border)',
-        fontSize: '12px',
+        fontSize: '11px',
         fontWeight: 600,
         letterSpacing: '0.1em',
         textTransform: 'uppercase',
-        overflowX: 'auto',
-        WebkitOverflowScrolling: 'touch',
-        scrollbarWidth: 'none',
       }}
-      className="max-[600px]:justify-start max-[600px]:px-4"
     >
       {NAV_ITEMS.map(({ label, href }) => (
         <Link
@@ -43,7 +40,7 @@ export default function PrimaryNav() {
           href={href}
           style={{
             display: 'inline-block',
-            padding: '0 0 14px',
+            padding: '12px 16px',
             color: 'var(--text)',
             textDecoration: 'none',
             borderBottom: isActive(href)
@@ -51,6 +48,7 @@ export default function PrimaryNav() {
               : '2px solid transparent',
             marginBottom: '-1px',
             transition: 'border-color 0.15s',
+            whiteSpace: 'nowrap',
           }}
           onMouseEnter={(e) => {
             if (!isActive(href)) {
