@@ -15,7 +15,7 @@ export default async function DashboardPage() {
       .select('id')
       .eq('user_id', user.id)
       .eq('type', 'found')
-      .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()),
+      .gte('created_at', new Date(new Date().getTime() - 24 * 60 * 60 * 1000).toISOString()),
   ]);
 
   const defaultSettings = {

@@ -112,7 +112,7 @@ export default function ActivityPage() {
         <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Loading…</p>
       ) : items.length === 0 ? (
         <p style={{ color: 'var(--text-muted)', fontSize: '14px', fontStyle: 'italic' }}>
-          No activity yet. Click "Run Check Now" to start.
+          No activity yet. Click &ldquo;Run Check Now&rdquo; to start.
         </p>
       ) : (
         <>

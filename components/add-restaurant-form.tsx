@@ -188,7 +188,7 @@ export default function AddRestaurantForm({ onAdd }: AddRestaurantFormProps) {
                   placeholder="resy.com/cities/ny/… or venue ID"
                 />
                 <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                  Paste the full URL — we'll extract the ID automatically
+                  Paste the full URL &mdash; we&apos;ll extract the ID automatically
                 </p>
               </div>
 
