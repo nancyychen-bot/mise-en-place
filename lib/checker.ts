@@ -62,119 +62,88 @@ export async function checkUserWatchlist(userId: string): Promise<CheckResult[]>
 
   const apiKey: string = settings.resy_api_key ?? '';
   const dates = getDateRange(settings.day_range, settings.days_of_week);
-  const results: CheckResult[] = [];
 
-  for (const restaurant of restaurants) {
-    const checkedAt = new Date();
-    const foundSlots: Slot[] = [];
+  // Check all restaurants in parallel
+  const results = await Promise.all(
+    restaurants.map(async (restaurant) => {
+      const checkedAt = new Date();
+      const foundSlots: Slot[] = [];
 
-    try {
-      const slotsByDate = await Promise.all(
-        dates.map(async (date) => {
-          if (restaurant.platform === 'resy') {
-            if (!apiKey) return [];
-            return findResyAvailability(apiKey, restaurant.venue_id, date, restaurant.party_size).catch(() => []);
-          } else if (restaurant.platform === 'opentable') {
-            return findOpenTableAvailability(
-              restaurant.venue_id,
-              date,
-              settings.earliest_time,
-              restaurant.party_size
-            ).catch(() => []);
-          }
-          return [];
-        })
-      );
+      try {
+        // Check all dates in parallel with a 6s per-call timeout
+        const slotsByDate = await Promise.all(
+          dates.map(async (date) => {
+            const withTimeout = <T>(p: Promise<T>): Promise<T> =>
+              Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error('timeout')), 6000))]);
 
-      for (const slots of slotsByDate) {
-        const inWindow = slots.filter((s: Slot) =>
-          isSlotInWindow(s.time, settings.earliest_time, settings.latest_time)
+            if (restaurant.platform === 'resy') {
+              if (!apiKey) return [];
+              return withTimeout(findResyAvailability(apiKey, restaurant.venue_id, date, restaurant.party_size)).catch(() => []);
+            } else if (restaurant.platform === 'opentable') {
+              return withTimeout(findOpenTableAvailability(
+                restaurant.venue_id, date, settings.earliest_time, restaurant.party_size
+              )).catch(() => []);
+            }
+            return [];
+          })
         );
-        for (const slot of inWindow) {
-          const cacheKey = `${userId}:${restaurant.id}:${slot.date}:${slot.time}`;
-          if (!notifiedCache.has(cacheKey)) {
-            foundSlots.push(slot);
-            notifiedCache.set(cacheKey, Date.now());
+
+        for (const slots of slotsByDate) {
+          const inWindow = slots.filter((s: Slot) =>
+            isSlotInWindow(s.time, settings.earliest_time, settings.latest_time)
+          );
+          for (const slot of inWindow) {
+            const cacheKey = `${userId}:${restaurant.id}:${slot.date}:${slot.time}`;
+            if (!notifiedCache.has(cacheKey)) {
+              foundSlots.push(slot);
+              notifiedCache.set(cacheKey, Date.now());
+            }
           }
         }
-      }
 
-      // Log check
-      await db.from('activity_log').insert({
-        user_id: userId,
-        restaurant_id: restaurant.id,
-        type: 'check',
-        message: `Checked <strong>${restaurant.name}</strong> — ${foundSlots.length} new slot(s) found`,
-      });
-
-      // Update last_checked
-      await db
-        .from('restaurants')
-        .update({ last_checked: checkedAt.toISOString() })
-        .eq('id', restaurant.id);
-
-      if (foundSlots.length > 0) {
-        // Log found
-        const timeList = [...new Set(foundSlots.map((s) => s.displayTime))].join(', ');
-        const dateList = [...new Set(foundSlots.map((s) => s.date))].join(', ');
-        const foundMsg = `🍽 <strong>${restaurant.name}</strong> — ${timeList} on ${dateList}`;
-        await db.from('activity_log').insert({
-          user_id: userId,
-          restaurant_id: restaurant.id,
-          type: 'found',
-          message: foundMsg,
-        });
-
-        // Send notification unless in quiet hours
-        const inQuiet = isCurrentTimeInQuietHours(
-          settings.quiet_hours_start,
-          settings.quiet_hours_end,
-          now
-        );
-
-        if (!inQuiet && settings.ntfy_topic) {
-          const platform = restaurant.platform;
-          const bookingUrl =
-            platform === 'resy'
-              ? `https://resy.com`
-              : `https://www.opentable.com`;
-
-          await sendNotification(
-            settings.ntfy_topic,
-            `Table available at ${restaurant.name}`,
-            `${timeList} on ${dateList} for ${restaurant.party_size} guests`,
-            settings.ntfy_priority,
-            bookingUrl
-          );
-
-          await db.from('activity_log').insert({
+        // Log check + update last_checked in parallel
+        await Promise.all([
+          db.from('activity_log').insert({
             user_id: userId,
             restaurant_id: restaurant.id,
-            type: 'notify',
-            message: `Notification sent for <strong>${restaurant.name}</strong>`,
-          });
+            type: 'check',
+            message: `Checked <strong>${restaurant.name}</strong> — ${foundSlots.length} new slot(s) found`,
+          }),
+          db.from('restaurants').update({ last_checked: checkedAt.toISOString() }).eq('id', restaurant.id),
+        ]);
+
+        if (foundSlots.length > 0) {
+          const timeList = [...new Set(foundSlots.map((s) => s.displayTime))].join(', ');
+          const dateList = [...new Set(foundSlots.map((s) => s.date))].join(', ');
+          const foundMsg = `🍽 <strong>${restaurant.name}</strong> — ${timeList} on ${dateList}`;
+
+          const inQuiet = isCurrentTimeInQuietHours(settings.quiet_hours_start, settings.quiet_hours_end, now);
+
+          await Promise.all([
+            db.from('activity_log').insert({ user_id: userId, restaurant_id: restaurant.id, type: 'found', message: foundMsg }),
+            !inQuiet && settings.ntfy_topic
+              ? sendNotification(
+                  settings.ntfy_topic,
+                  `Table available at ${restaurant.name}`,
+                  `${timeList} on ${dateList} for ${restaurant.party_size} guests`,
+                  settings.ntfy_priority,
+                  restaurant.platform === 'resy' ? 'https://resy.com' : 'https://www.opentable.com'
+                ).then(() => db.from('activity_log').insert({ user_id: userId, restaurant_id: restaurant.id, type: 'notify', message: `Notification sent for <strong>${restaurant.name}</strong>` }))
+              : Promise.resolve(),
+          ]);
         }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`[checker] error for restaurant ${restaurant.id}:`, msg);
+        await db.from('activity_log').insert({
+          user_id: userId, restaurant_id: restaurant.id, type: 'system',
+          message: `Error checking <strong>${restaurant.name}</strong>: ${msg}`,
+        });
       }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[checker] error for restaurant ${restaurant.id}:`, msg);
 
-      await db.from('activity_log').insert({
-        user_id: userId,
-        restaurant_id: restaurant.id,
-        type: 'system',
-        message: `Error checking <strong>${restaurant.name}</strong>: ${msg}`,
-      });
-    }
-
-    results.push({
-      restaurantId: restaurant.id,
-      restaurantName: restaurant.name,
-      platform: restaurant.platform,
-      slots: foundSlots,
-      checkedAt,
-    });
-  }
+      return { restaurantId: restaurant.id, restaurantName: restaurant.name, platform: restaurant.platform, slots: foundSlots, checkedAt };
+    })
+  );
 
   return results;
 }
