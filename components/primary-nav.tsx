@@ -3,13 +3,18 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-const NAV_ITEMS = [
+const NAV_ROW1 = [
   { label: 'Watchlist', href: '/dashboard' },
   { label: 'Preferences', href: '/dashboard/preferences' },
   { label: 'Activity', href: '/dashboard/activity' },
+] as const;
+
+const NAV_ROW2 = [
   { label: 'Setup Guide', href: '/dashboard/setup' },
   { label: 'Account', href: '/dashboard/account' },
 ] as const;
+
+const NAV_ITEMS = [...NAV_ROW1, ...NAV_ROW2];
 
 export default function PrimaryNav() {
   const pathname = usePathname();
@@ -34,7 +39,9 @@ export default function PrimaryNav() {
         textTransform: 'uppercase',
       }}
     >
-      {NAV_ITEMS.map(({ label, href }) => (
+      {NAV_ITEMS.map(({ label, href }, i) => (
+        <>
+        {i === 3 && <span className="min-[600px]:hidden" style={{ flexBasis: '100%', height: 0 }} />}
         <Link
           key={href}
           href={href}
@@ -63,6 +70,7 @@ export default function PrimaryNav() {
         >
           {label}
         </Link>
+        </>
       ))}
     </nav>
   );
