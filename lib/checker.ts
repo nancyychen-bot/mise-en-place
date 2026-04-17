@@ -128,7 +128,9 @@ export async function checkUserWatchlist(userId: string): Promise<CheckResult[]>
                   `Table available at ${restaurant.name}`,
                   `${timeList} on ${dateList} for ${restaurant.party_size} guests`,
                   settings.ntfy_priority,
-                  restaurant.platform === 'resy' ? 'https://resy.com' : 'https://www.opentable.com'
+                  restaurant.platform === 'resy'
+                    ? `https://resy.com/cities/ny/venues/${restaurant.venue_id}`
+                    : `https://www.opentable.com/restaurant/profile/${restaurant.venue_id}`
                 ).then(() => db.from('activity_log').insert({ user_id: userId, restaurant_id: restaurant.id, type: 'notify', message: `Notification sent for <strong>${restaurant.name}</strong>` }))
               : Promise.resolve(),
           ]);

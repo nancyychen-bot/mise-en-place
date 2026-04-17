@@ -11,6 +11,18 @@ interface RestaurantCardProps {
   onDelete: (id: string) => Promise<void>;
 }
 
+function getBookingUrl(restaurant: Restaurant, slot?: Slot): string {
+  if (restaurant.platform === 'resy') {
+    const base = `https://resy.com/cities/ny/venues/${restaurant.venueId}`;
+    return slot ? `${base}?date=${slot.date}&seats=${restaurant.partySize}` : base;
+  } else {
+    const base = `https://www.opentable.com/restaurant/profile/${restaurant.venueId}`;
+    return slot
+      ? `${base}?covers=${restaurant.partySize}&dateTime=${slot.date}T${slot.time}:00`
+      : base;
+  }
+}
+
 function formatRelativeTime(date: Date | null): string {
   if (!date) return 'Never';
   const diff = Date.now() - new Date(date).getTime();
@@ -185,8 +197,11 @@ export default function RestaurantCard({
           }}
         >
           {slots.map((slot) => (
-            <span
+            <a
               key={`${slot.date}-${slot.time}`}
+              href={getBookingUrl(restaurant, slot)}
+              target="_blank"
+              rel="noopener noreferrer"
               style={{
                 fontFamily: 'var(--font-family-mono)',
                 fontSize: '12px',
@@ -196,11 +211,13 @@ export default function RestaurantCard({
                 color: 'var(--bg)',
                 letterSpacing: '0.02em',
                 animation: 'slotIn 0.3s ease-out',
+                textDecoration: 'none',
+                cursor: 'pointer',
               }}
             >
               {slot.displayTime}
-            </span>
-          ))}
+            </a>
+            ))}
         </div>
       ) : (
         <p
