@@ -217,7 +217,7 @@ export default function RestaurantCard({
                 cursor: 'pointer',
               }}
             >
-              {slot.displayTime}
+              {slot.date.slice(5).replace('-', '/')} {slot.displayTime}
             </a>
             ))}
         </div>
