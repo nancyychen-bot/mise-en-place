@@ -1,0 +1,1711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mise en Place — Restaurant Reservation Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FFFFFF;
+    --bg-muted: #FAFAF8;
+    --bg-input: #FFFFFF;
+    --border: #1A1A1A;
+    --border-light: #E4E4E0;
+    --border-hair: #EBEBE7;
+    --text: #1A1A1A;
+    --text-secondary: #5A5A5A;
+    --text-muted: #8A8A8A;
+
+    /* Le Fooding color tags */
+    --tag-blue: #2147C7;
+    --tag-yellow: #F4D53D;
+    --tag-cyan: #3BC9E6;
+    --tag-green: #17AC10;
+    --tag-orange: #E98024;
+    --tag-red: #DC3545;
+
+    --green-light: #F0F8EF;
+    --red-light: #FDEDED;
+    --yellow-light: #FEFAE8;
+
+    --font-serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { font-size: 16px; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  a { color: inherit; text-decoration: none; }
+
+  /* ─────────────────────────────────────── */
+  /* HEADER — editorial masthead              */
+  /* ─────────────────────────────────────── */
+  .masthead {
+    border-bottom: 1px solid var(--border);
+    padding: 28px 40px 20px;
+    position: relative;
+  }
+
+  .masthead-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  .masthead-top-left,
+  .masthead-top-right {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+  }
+
+  .menu-btn {
+    border: 1px solid var(--border);
+    background: var(--bg);
+    padding: 5px 10px;
+    font-family: var(--font-sans);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .menu-btn:hover { background: var(--bg-muted); }
+
+  .nav-link {
+    cursor: pointer;
+    transition: color 0.15s;
+  }
+  .nav-link:hover { color: var(--text); }
+
+  .masthead-title {
+    text-align: center;
+    margin-bottom: 8px;
+  }
+
+  .masthead-eyebrow {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 2px;
+    color: var(--text);
+  }
+
+  .masthead-logo {
+    font-family: var(--font-serif);
+    font-weight: 900;
+    font-size: 56px;
+    letter-spacing: -0.02em;
+    line-height: 0.95;
+    color: var(--text);
+    display: inline-block;
+  }
+
+  .masthead-logo sup {
+    font-size: 14px;
+    font-weight: 400;
+    vertical-align: super;
+    margin-left: 2px;
+    font-family: var(--font-sans);
+  }
+
+  /* ─────────────────────────────────────── */
+  /* PRIMARY NAV                              */
+  /* ─────────────────────────────────────── */
+  .primary-nav {
+    display: flex;
+    justify-content: center;
+    gap: 28px;
+    padding: 14px 40px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .primary-nav button {
+    border: none;
+    background: none;
+    padding: 0 0 14px;
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--text);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: border-color 0.15s;
+  }
+
+  .primary-nav button.active {
+    border-bottom-color: var(--text);
+  }
+
+  .primary-nav button:hover {
+    border-bottom-color: var(--text);
+  }
+
+  /* ─────────────────────────────────────── */
+  /* MAIN LAYOUT                              */
+  /* ─────────────────────────────────────── */
+  .main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 32px 40px 80px;
+  }
+
+  .main-wide {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 32px 40px 80px;
+  }
+
+  /* ─────────────────────────────────────── */
+  /* STATUS BAR                               */
+  /* ─────────────────────────────────────── */
+  .status-bar {
+    display: flex;
+    gap: 32px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-light);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-bottom: 40px;
+  }
+
+  .status-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .dot.green { background: var(--tag-green); }
+  .dot.yellow { background: var(--tag-yellow); border: 1px solid #D4B835; }
+  .dot.red { background: var(--tag-red); }
+  .dot.muted { background: var(--text-muted); }
+
+  .status-val {
+    color: var(--text);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+
+  /* ─────────────────────────────────────── */
+  /* SECTION HEADERS                          */
+  /* ─────────────────────────────────────── */
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid var(--border);
+  }
+
+  .section-title {
+    font-family: var(--font-serif);
+    font-weight: 900;
+    font-size: 32px;
+    letter-spacing: -0.01em;
+    color: var(--text);
+  }
+
+  .section-meta {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  /* ─────────────────────────────────────── */
+  /* BUTTONS                                  */
+  /* ─────────────────────────────────────── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    transition: all 0.15s;
+  }
+
+  .btn-primary {
+    background: var(--text);
+    color: var(--bg);
+    border-color: var(--text);
+  }
+  .btn-primary:hover {
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  .btn-secondary {
+    background: var(--bg);
+    color: var(--text);
+  }
+  .btn-secondary:hover {
+    background: var(--text);
+    color: var(--bg);
+  }
+
+  .btn-small {
+    padding: 6px 12px;
+    font-size: 10px;
+  }
+
+  /* ─────────────────────────────────────── */
+  /* RESTAURANT GRID                          */
+  /* ─────────────────────────────────────── */
+  .restaurant-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0;
+    border-top: 1px solid var(--border-light);
+    border-left: 1px solid var(--border-light);
+  }
+
+  .restaurant-card {
+    background: var(--bg);
+    padding: 24px 24px 20px;
+    border-right: 1px solid var(--border-light);
+    border-bottom: 1px solid var(--border-light);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 200px;
+    transition: background 0.15s;
+  }
+
+  .restaurant-card:hover {
+    background: var(--bg-muted);
+  }
+
+  .restaurant-card.has-slots {
+    background: var(--green-light);
+  }
+
+  .restaurant-card.inactive {
+    opacity: 0.55;
+  }
+
+  .platform-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--bg);
+    align-self: flex-start;
+    margin-bottom: 16px;
+  }
+  .platform-tag.resy { background: var(--tag-red); }
+  .platform-tag.opentable { background: var(--tag-blue); }
+
+  .restaurant-name {
+    font-family: var(--font-serif);
+    font-weight: 700;
+    font-size: 24px;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    margin-bottom: 10px;
+    word-break: break-word;
+  }
+
+  .restaurant-meta {
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    font-weight: 500;
+  }
+
+  .restaurant-slots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: auto;
+    padding-top: 12px;
+  }
+
+  .slot-chip {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 5px 10px;
+    background: var(--tag-green);
+    color: var(--bg);
+    letter-spacing: 0.02em;
+    animation: slotIn 0.3s ease-out;
+  }
+
+  @keyframes slotIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .restaurant-empty-slots {
+    margin-top: auto;
+    padding-top: 12px;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+    font-style: italic;
+  }
+
+  .card-controls {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .toggle {
+    width: 32px;
+    height: 18px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    border-radius: 9px;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s;
+    padding: 0;
+  }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--text);
+    top: 2px;
+    left: 2px;
+    transition: all 0.2s;
+  }
+  .toggle.active {
+    background: var(--tag-green);
+    border-color: var(--tag-green);
+  }
+  .toggle.active::after {
+    background: var(--bg);
+    transform: translateX(14px);
+  }
+
+  .icon-btn {
+    border: none;
+    background: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s;
+  }
+  .icon-btn:hover { color: var(--tag-red); }
+
+  /* ─────────────────────────────────────── */
+  /* ADD RESTAURANT FORM                      */
+  /* ─────────────────────────────────────── */
+  .form-panel {
+    border: 1px solid var(--border);
+    padding: 32px;
+    margin-bottom: 32px;
+    background: var(--bg-muted);
+    display: none;
+  }
+  .form-panel.visible {
+    display: block;
+    animation: slideIn 0.3s ease-out;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .form-title {
+    font-family: var(--font-serif);
+    font-weight: 700;
+    font-size: 22px;
+    margin-bottom: 4px;
+  }
+
+  .form-sub {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+  }
+  .form-group.full { grid-column: 1 / -1; }
+
+  .form-label {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .form-help {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+
+  .form-input,
+  .form-select {
+    padding: 10px 12px;
+    border: 1px solid var(--border-light);
+    background: var(--bg);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+    width: 100%;
+  }
+  .form-input:focus,
+  .form-select:focus {
+    border-color: var(--border);
+  }
+
+  .form-input::placeholder {
+    color: var(--text-muted);
+  }
+
+  .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  /* ─────────────────────────────────────── */
+  /* WATCH PREFERENCES                        */
+  /* ─────────────────────────────────────── */
+  .preferences-bar {
+    border: 1px solid var(--border-light);
+    padding: 20px 24px;
+    margin-bottom: 32px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+  }
+
+  .pref-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .pref-label {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+
+  .pref-value {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .pref-edit {
+    font-size: 11px;
+    color: var(--tag-red);
+    cursor: pointer;
+    border: none;
+    background: none;
+    padding: 0;
+    margin-top: 2px;
+    font-family: var(--font-sans);
+    text-align: left;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .pref-edit:hover { text-decoration: underline; }
+
+  /* ─────────────────────────────────────── */
+  /* ACTIVITY LOG                             */
+  /* ─────────────────────────────────────── */
+  .log-item {
+    display: grid;
+    grid-template-columns: 100px 20px 1fr;
+    gap: 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border-hair);
+    align-items: start;
+  }
+
+  .log-time {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
+    padding-top: 1px;
+  }
+
+  .log-tag {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--bg);
+    padding: 2px 6px;
+    text-align: center;
+    align-self: start;
+    white-space: nowrap;
+  }
+  .log-tag.check { background: var(--text-muted); }
+  .log-tag.found { background: var(--tag-green); }
+  .log-tag.notify { background: var(--tag-orange); }
+  .log-tag.system { background: var(--tag-blue); }
+
+  .log-message {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.5;
+  }
+  .log-message strong {
+    font-weight: 600;
+  }
+
+  /* ─────────────────────────────────────── */
+  /* TAB CONTENT                              */
+  /* ─────────────────────────────────────── */
+  .tab-content { display: none; }
+  .tab-content.active { display: block; animation: fadeIn 0.25s ease-out; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  /* ─────────────────────────────────────── */
+  /* SETUP GUIDE                              */
+  /* ─────────────────────────────────────── */
+  .setup-intro {
+    border-left: 4px solid var(--tag-yellow);
+    padding: 16px 20px;
+    background: var(--yellow-light);
+    margin-bottom: 32px;
+  }
+
+  .setup-intro-title {
+    font-family: var(--font-serif);
+    font-weight: 700;
+    font-size: 18px;
+    margin-bottom: 6px;
+  }
+
+  .setup-intro p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.55;
+  }
+
+  .step {
+    margin-bottom: 48px;
+    padding-bottom: 48px;
+    border-bottom: 1px solid var(--border-hair);
+  }
+  .step:last-child { border-bottom: none; }
+
+  .step-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 2px solid var(--border);
+    font-family: var(--font-serif);
+    font-weight: 900;
+    font-size: 18px;
+    margin-bottom: 16px;
+  }
+
+  .step-title {
+    font-family: var(--font-serif);
+    font-weight: 900;
+    font-size: 28px;
+    letter-spacing: -0.01em;
+    margin-bottom: 4px;
+    line-height: 1.1;
+  }
+
+  .step-eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--tag-red);
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .step-desc {
+    font-size: 15px;
+    color: var(--text-secondary);
+    line-height: 1.65;
+    margin-bottom: 20px;
+    max-width: 640px;
+  }
+
+  .step ol,
+  .step ul {
+    margin: 16px 0 16px 22px;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--text);
+  }
+
+  .step li { margin-bottom: 8px; }
+
+  .step li strong {
+    font-weight: 600;
+  }
+
+  .step a {
+    color: var(--text);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .step a:hover { color: var(--tag-red); }
+
+  .code {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    background: var(--bg-muted);
+    border: 1px solid var(--border-light);
+    padding: 2px 6px;
+    letter-spacing: 0.02em;
+  }
+
+  .code-block {
+    background: var(--text);
+    color: #E4E4E0;
+    padding: 18px 20px;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.65;
+    overflow-x: auto;
+    white-space: pre;
+    margin: 16px 0;
+    letter-spacing: 0.01em;
+  }
+
+  .callout {
+    background: var(--bg-muted);
+    border-left: 3px solid var(--tag-cyan);
+    padding: 14px 18px;
+    margin: 16px 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.55;
+  }
+
+  .callout strong {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .callout-tip {
+    border-left-color: var(--tag-green);
+    background: var(--green-light);
+  }
+
+  .callout-warn {
+    border-left-color: var(--tag-yellow);
+    background: var(--yellow-light);
+  }
+
+  /* ─────────────────────────────────────── */
+  /* ACCOUNT / SETTINGS                       */
+  /* ─────────────────────────────────────── */
+  .account-section {
+    margin-bottom: 40px;
+  }
+
+  .account-header {
+    font-family: var(--font-serif);
+    font-weight: 900;
+    font-size: 22px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 20px;
+  }
+
+  .field-row {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 20px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border-hair);
+    align-items: start;
+  }
+
+  .field-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .field-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+
+  .field-input-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  /* ─────────────────────────────────────── */
+  /* AUTH SCREEN                              */
+  /* ─────────────────────────────────────── */
+  .auth-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    z-index: 100;
+    overflow-y: auto;
+  }
+  .auth-overlay.visible { display: block; }
+
+  .auth-inner {
+    max-width: 440px;
+    margin: 0 auto;
+    padding: 80px 32px 60px;
+  }
+
+  .auth-title-block {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+
+  .auth-logo {
+    font-family: var(--font-serif);
+    font-weight: 900;
+    font-size: 40px;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+
+  .auth-eyebrow {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 14px;
+    margin-bottom: 4px;
+    color: var(--text-secondary);
+  }
+
+  .auth-tagline {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-top: 12px;
+  }
+
+  .auth-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+
+  .auth-tab {
+    padding: 14px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-align: center;
+    cursor: pointer;
+    border: none;
+    background: var(--bg);
+    font-family: var(--font-sans);
+    transition: background 0.15s;
+  }
+  .auth-tab.active {
+    background: var(--text);
+    color: var(--bg);
+  }
+
+  .auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .auth-footer {
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 32px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-light);
+    line-height: 1.5;
+  }
+
+  /* ─────────────────────────────────────── */
+  /* FOOTER                                   */
+  /* ─────────────────────────────────────── */
+  .footer {
+    border-top: 1px solid var(--border);
+    padding: 24px 40px;
+    text-align: center;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-top: 40px;
+  }
+
+  /* ─────────────────────────────────────── */
+  /* RESPONSIVE                               */
+  /* ─────────────────────────────────────── */
+  @media (max-width: 720px) {
+    .masthead { padding: 20px 20px 16px; }
+    .masthead-logo { font-size: 40px; }
+    .masthead-top { font-size: 10px; }
+    .primary-nav {
+      padding: 12px 20px 0;
+      gap: 18px;
+      font-size: 10px;
+      overflow-x: auto;
+      flex-wrap: nowrap;
+      justify-content: flex-start;
+    }
+    .primary-nav button { white-space: nowrap; font-size: 10px; }
+    .main,
+    .main-wide { padding: 24px 20px 60px; }
+    .status-bar { flex-wrap: wrap; gap: 12px 20px; }
+    .section-title { font-size: 24px; }
+    .restaurant-grid { grid-template-columns: 1fr; }
+    .form-grid { grid-template-columns: 1fr; }
+    .preferences-bar { grid-template-columns: 1fr 1fr; gap: 16px; padding: 16px; }
+    .field-row { grid-template-columns: 1fr; gap: 8px; }
+    .log-item { grid-template-columns: 80px 20px 1fr; gap: 8px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ─────────────────────────────────────── -->
+<!-- AUTH SCREEN (hidden by default)          -->
+<!-- ─────────────────────────────────────── -->
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-inner">
+    <div class="auth-title-block">
+      <div class="auth-eyebrow">Bienvenue à</div>
+      <div class="auth-logo">Mise en Place</div>
+      <div class="auth-tagline">Reservation Watch · Est. 2026</div>
+    </div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab(event, 'signin')">Sign In</button>
+      <button class="auth-tab" onclick="switchAuthTab(event, 'signup')">Create Account</button>
+    </div>
+
+    <form class="auth-form" onsubmit="event.preventDefault(); closeAuth();">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" type="email" placeholder="you@example.com" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" type="password" placeholder="••••••••" required>
+      </div>
+      <button type="submit" class="btn btn-primary" style="justify-content: center;">Continue →</button>
+    </form>
+
+    <div class="auth-footer">
+      Each account has its own watchlist, API keys, and notification settings.<br>
+      Your data is encrypted and never shared.
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<!-- MASTHEAD                                  -->
+<!-- ─────────────────────────────────────── -->
+<header class="masthead">
+  <div class="masthead-top">
+    <div class="masthead-top-left">
+      <button class="menu-btn">☰ MENU</button>
+      <button class="menu-btn">EN ↓</button>
+    </div>
+    <div class="masthead-top-right">
+      <span class="nav-link">NANCY@EXAMPLE.COM</span>
+      <span class="nav-link" onclick="openAuth()">SIGN OUT</span>
+    </div>
+  </div>
+
+  <div class="masthead-title">
+    <div class="masthead-eyebrow">Reservations, ready when you are</div>
+    <h1 class="masthead-logo">MISE EN PLACE<sup>®</sup></h1>
+  </div>
+</header>
+
+<!-- ─────────────────────────────────────── -->
+<!-- PRIMARY NAV                              -->
+<!-- ─────────────────────────────────────── -->
+<nav class="primary-nav">
+  <button class="active" onclick="switchTab(event, 'watchlist')">Watchlist</button>
+  <button onclick="switchTab(event, 'preferences')">Preferences</button>
+  <button onclick="switchTab(event, 'activity')">Activity</button>
+  <button onclick="switchTab(event, 'setup')">Setup Guide</button>
+  <button onclick="switchTab(event, 'account')">Account</button>
+</nav>
+
+<!-- ─────────────────────────────────────── -->
+<!-- WATCHLIST TAB                            -->
+<!-- ─────────────────────────────────────── -->
+<div class="tab-content active" id="tab-watchlist">
+  <div class="main">
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <div class="status-item">
+        <div class="dot green"></div>
+        <span>Watching <span class="status-val" id="activeCount">4</span></span>
+      </div>
+      <div class="status-item">
+        <div class="dot yellow" id="slotsDot"></div>
+        <span>Slots Found <span class="status-val" id="slotsCount">0</span></span>
+      </div>
+      <div class="status-item">
+        <div class="dot muted"></div>
+        <span>Window <span class="status-val" id="statusWindow">6–8 PM</span></span>
+      </div>
+      <div class="status-item">
+        <div class="dot muted"></div>
+        <span>Range <span class="status-val" id="statusRange">14 days</span></span>
+      </div>
+      <div class="status-item">
+        <div class="dot muted"></div>
+        <span>Every <span class="status-val" id="statusInterval">5 min</span></span>
+      </div>
+      <div class="status-item">
+        <div class="dot green"></div>
+        <span>Cost <span class="status-val">$0/mo</span></span>
+      </div>
+    </div>
+
+    <!-- Quick preferences bar -->
+    <div class="preferences-bar">
+      <div class="pref-item">
+        <span class="pref-label">Time Window</span>
+        <span class="pref-value" id="prefWindow">18:00 – 20:00</span>
+      </div>
+      <div class="pref-item">
+        <span class="pref-label">Day Range</span>
+        <span class="pref-value" id="prefRange">Next 14 days</span>
+      </div>
+      <div class="pref-item">
+        <span class="pref-label">Check Interval</span>
+        <span class="pref-value" id="prefInterval">5 minutes</span>
+      </div>
+      <div class="pref-item">
+        <span class="pref-label">Notifications</span>
+        <span class="pref-value">ntfy.sh/reso-…</span>
+        <button class="pref-edit" onclick="switchTabByName('preferences')">Edit →</button>
+      </div>
+    </div>
+
+    <!-- Section Header -->
+    <div class="section-header">
+      <h2 class="section-title">Your Watchlist</h2>
+      <button class="btn btn-primary" onclick="toggleAddForm()">+ Add Restaurant</button>
+    </div>
+
+    <!-- Add Form -->
+    <div class="form-panel" id="addForm">
+      <div class="form-title">New Restaurant</div>
+      <div class="form-sub">Paste a Resy or OpenTable URL and we'll figure out the ID automatically.</div>
+
+      <div class="form-grid">
+        <div class="form-group full">
+          <label class="form-label">Restaurant Name</label>
+          <input class="form-input" id="newName" placeholder="e.g. Don Angie">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Platform</label>
+          <select class="form-select" id="newPlatform">
+            <option value="resy">Resy</option>
+            <option value="opentable">OpenTable</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Venue ID or URL</label>
+          <input class="form-input" id="newVenueId" placeholder="e.g. 1505 or resy.com/cities/ny/...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Party Size</label>
+          <select class="form-select" id="newPartySize">
+            <option value="1">1 guest</option>
+            <option value="2" selected>2 guests</option>
+            <option value="3">3 guests</option>
+            <option value="4">4 guests</option>
+            <option value="5">5 guests</option>
+            <option value="6">6 guests</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-secondary" onclick="toggleAddForm()">Cancel</button>
+        <button class="btn btn-primary" onclick="addRestaurant()">Add to Watchlist</button>
+      </div>
+    </div>
+
+    <!-- Restaurant Grid -->
+    <div class="restaurant-grid" id="restaurantList"></div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<!-- PREFERENCES TAB                          -->
+<!-- ─────────────────────────────────────── -->
+<div class="tab-content" id="tab-preferences">
+  <div class="main-wide">
+    <div class="section-header">
+      <h2 class="section-title">Monitoring Preferences</h2>
+      <span class="section-meta">Applies to all restaurants</span>
+    </div>
+
+    <div class="account-section">
+      <div class="account-header">Time Window</div>
+      <div class="field-row">
+        <div>
+          <div class="field-label">Earliest Time</div>
+          <div class="field-desc">Don't notify me about slots before this time.</div>
+        </div>
+        <div class="field-input-wrap">
+          <input class="form-input" type="time" id="prefEarliest" value="18:00" onchange="updatePrefs()">
+        </div>
+      </div>
+      <div class="field-row">
+        <div>
+          <div class="field-label">Latest Time</div>
+          <div class="field-desc">Don't notify me about slots after this time.</div>
+        </div>
+        <div class="field-input-wrap">
+          <input class="form-input" type="time" id="prefLatest" value="20:00" onchange="updatePrefs()">
+        </div>
+      </div>
+    </div>
+
+    <div class="account-section">
+      <div class="account-header">Day Range</div>
+      <div class="field-row">
+        <div>
+          <div class="field-label">How Many Days Ahead?</div>
+          <div class="field-desc">Check availability for the next X days from today. More days = more checks = more noise.</div>
+        </div>
+        <div class="field-input-wrap">
+          <select class="form-select" id="prefDays" onchange="updatePrefs()">
+            <option value="1">Just today</option>
+            <option value="3">Next 3 days</option>
+            <option value="7">Next 7 days (1 week)</option>
+            <option value="14" selected>Next 14 days (2 weeks)</option>
+            <option value="30">Next 30 days (1 month)</option>
+            <option value="60">Next 60 days (2 months)</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div>
+          <div class="field-label">Days of the Week</div>
+          <div class="field-desc">Only check specific days. Useful if you only want to go out on weekends.</div>
+        </div>
+        <div class="field-input-wrap">
+          <select class="form-select" id="prefDaysOfWeek" onchange="updatePrefs()">
+            <option value="all" selected>All days</option>
+            <option value="weekdays">Weekdays only (Mon–Fri)</option>
+            <option value="weekends">Weekends only (Fri–Sun)</option>
+            <option value="sat">Saturdays only</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="account-section">
+      <div class="account-header">Check Interval</div>
+      <div class="field-row">
+        <div>
+          <div class="field-label">How Often?</div>
+          <div class="field-desc">How frequently to check for availability. Every 5 minutes is a good default for competitive restaurants.</div>
+        </div>
+        <div class="field-input-wrap">
+          <select class="form-select" id="prefInterval2" onchange="updatePrefs()">
+            <option value="1">Every 1 minute (aggressive)</option>
+            <option value="5" selected>Every 5 minutes (recommended)</option>
+            <option value="10">Every 10 minutes</option>
+            <option value="15">Every 15 minutes</option>
+            <option value="30">Every 30 minutes</option>
+            <option value="60">Every hour (chill)</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div>
+          <div class="field-label">Active Hours</div>
+          <div class="field-desc">Don't check in the middle of the night. Restaurants release cancellations during the day.</div>
+        </div>
+        <div class="field-input-wrap">
+          <select class="form-select" id="prefActiveHours" onchange="updatePrefs()">
+            <option value="24">24/7</option>
+            <option value="8-22" selected>8 AM – 10 PM</option>
+            <option value="10-20">10 AM – 8 PM</option>
+            <option value="custom">Custom...</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="account-section">
+      <div class="account-header">Notification Quiet Hours</div>
+      <div class="field-row">
+        <div>
+          <div class="field-label">Don't Buzz My Phone Between</div>
+          <div class="field-desc">We'll still check — just hold notifications until you're awake.</div>
+        </div>
+        <div class="field-input-wrap">
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <input class="form-input" type="time" value="22:00" style="flex: 1;">
+            <span style="font-size: 12px; color: var(--text-muted);">to</span>
+            <input class="form-input" type="time" value="07:00" style="flex: 1;">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; gap: 8px; padding-top: 20px;">
+      <button class="btn btn-secondary">Reset to Defaults</button>
+      <button class="btn btn-primary">Save Preferences</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<!-- ACTIVITY TAB                             -->
+<!-- ─────────────────────────────────────── -->
+<div class="tab-content" id="tab-activity">
+  <div class="main-wide">
+    <div class="section-header">
+      <h2 class="section-title">Activity Log</h2>
+      <button class="btn btn-secondary btn-small" onclick="simulateCheck()">↻ Run Check Now</button>
+    </div>
+    <div id="logList"></div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<!-- SETUP GUIDE TAB                          -->
+<!-- ─────────────────────────────────────── -->
+<div class="tab-content" id="tab-setup">
+  <div class="main-wide">
+    <div class="section-header">
+      <h2 class="section-title">Setup Guide</h2>
+      <span class="section-meta">Est. 15 minutes · Free forever</span>
+    </div>
+
+    <div class="setup-intro">
+      <div class="setup-intro-title">Read this first!</div>
+      <p>Mise en Place is free because <em>you</em> run the checks on your own computer (or a free cloud service). We'll walk you through every step, explaining what each thing does and why. No prior experience needed — just follow the instructions in order.</p>
+    </div>
+
+    <!-- STEP 1 -->
+    <div class="step">
+      <div class="step-number">1</div>
+      <div class="step-eyebrow">About 3 minutes</div>
+      <h3 class="step-title">Set up push notifications with ntfy.sh</h3>
+      <p class="step-desc">
+        This is how your phone will get the alert when a reservation opens up. Think of it like a private channel that only you can see. When our program finds a slot, it sends a message to your channel, and your phone buzzes.
+      </p>
+
+      <div class="callout callout-tip">
+        <strong>Why ntfy.sh?</strong> It's 100% free, there are no ads, and you don't need to give them your phone number or email. You just pick a secret name for your channel, tell your phone to listen for it, and you're done.
+      </div>
+
+      <strong style="font-size: 13px;">Do this:</strong>
+      <ol>
+        <li><strong>Install the ntfy app on your phone.</strong> Search for "ntfy" (spelled N-T-F-Y) in the App Store or Google Play. The icon is a little speaker. Install it — it's free.</li>
+        <li><strong>Open the app and tap "Subscribe to topic."</strong> Now pick a secret name. This is like a password — if someone guesses it, they can send you notifications too, so make it weird. Good examples: <span class="code">reso-nancy-x9k2-dinner</span> or <span class="code">mise-nyc-secret-2026</span>. Bad examples: <span class="code">pizza</span> (too guessable).</li>
+        <li><strong>Tap "Subscribe."</strong> The app is now listening for any messages sent to that name.</li>
+        <li><strong>Copy your topic name.</strong> You'll paste it into Mise en Place in a moment. Write it down so you don't forget.</li>
+        <li><strong>Test it!</strong> Come back to this page when you're ready. We'll send a test notification in a few steps.</li>
+      </ol>
+    </div>
+
+    <!-- STEP 2 -->
+    <div class="step">
+      <div class="step-number">2</div>
+      <div class="step-eyebrow">About 5 minutes</div>
+      <h3 class="step-title">Get your Resy API key</h3>
+      <p class="step-desc">
+        Resy has a public API — basically, a "phone line" that their own website uses to check availability. We're going to borrow that same phone line. You need a small key that lets you make calls on it. It's free and Resy gives the same key to everyone who uses their site.
+      </p>
+
+      <div class="callout">
+        <strong>Heads up:</strong> This part sounds scary but it's not. You're just copying one line of text from your browser's "DevTools." Think of it like viewing the source code of a website — totally safe, nothing breaks.
+      </div>
+
+      <strong style="font-size: 13px;">Do this:</strong>
+      <ol>
+        <li><strong>Open Google Chrome</strong> on your computer (not your phone). If you don't have Chrome, Safari or Firefox works too.</li>
+        <li><strong>Go to <a href="https://resy.com" target="_blank">resy.com</a></strong> and click on any restaurant — for example, search for "Don Angie."</li>
+        <li><strong>Open DevTools.</strong> Right-click anywhere on the page and choose <em>"Inspect."</em> A panel will pop up on the right or bottom of your browser. Don't worry — nothing is broken.</li>
+        <li><strong>Click the "Network" tab</strong> at the top of the panel.</li>
+        <li><strong>Refresh the page</strong> (Cmd+R on Mac, Ctrl+R on Windows). You'll see a waterfall of tiny rows appear.</li>
+        <li><strong>Type "find" in the Filter box</strong> (usually at the top of the Network panel). You should see rows that start with <span class="code">find?</span>.</li>
+        <li><strong>Click on one of those rows.</strong> A new sub-panel opens. Scroll down until you see <em>"Request Headers."</em></li>
+        <li><strong>Find the line that starts with <span class="code">Authorization:</span></strong> It looks like: <span class="code">ResyAPI api_key="AIcdK2rLXG6TYwJseSbmrBAy3RP81ocd"</span></li>
+        <li><strong>Copy everything inside the quotation marks</strong> — that's your API key. It's about 30 characters long.</li>
+      </ol>
+
+      <div class="callout callout-warn">
+        <strong>Can't find it?</strong> Watch a 2-minute video walkthrough on our help page, or try a different browser. Sometimes Safari hides things.
+      </div>
+    </div>
+
+    <!-- STEP 3 -->
+    <div class="step">
+      <div class="step-number">3</div>
+      <div class="step-eyebrow">About 2 minutes</div>
+      <h3 class="step-title">Paste your keys into your Account</h3>
+      <p class="step-desc">
+        Now we'll store the two things you just got — your ntfy topic name and your Resy API key — so Mise en Place can use them.
+      </p>
+
+      <strong style="font-size: 13px;">Do this:</strong>
+      <ol>
+        <li><strong>Click the "Account" tab</strong> at the top of this page.</li>
+        <li><strong>Paste your Resy API key</strong> into the Resy API Key field.</li>
+        <li><strong>Paste your ntfy topic</strong> into the Notifications field. It should be just the name, like <span class="code">reso-nancy-x9k2-dinner</span> — no https:// in front.</li>
+        <li><strong>Click "Save."</strong></li>
+        <li><strong>Click "Send Test Notification."</strong> Your phone should buzz within 5 seconds with a test message. If it does — you're all set!</li>
+      </ol>
+    </div>
+
+    <!-- STEP 4 -->
+    <div class="step">
+      <div class="step-number">4</div>
+      <div class="step-eyebrow">About 3 minutes</div>
+      <h3 class="step-title">Add your first restaurant</h3>
+      <p class="step-desc">
+        Time for the fun part. Let's add a restaurant to your watchlist so Mise en Place knows what to watch.
+      </p>
+
+      <strong style="font-size: 13px;">Do this:</strong>
+      <ol>
+        <li><strong>Go back to <a href="https://resy.com" target="_blank">resy.com</a></strong> and find a restaurant you want to watch.</li>
+        <li><strong>Copy the URL</strong> from your browser's address bar. It'll look like: <span class="code">resy.com/cities/ny/venues/don-angie</span></li>
+        <li><strong>Come back to Mise en Place</strong> and click the "Watchlist" tab, then "+ Add Restaurant."</li>
+        <li><strong>Paste the URL</strong> into the "Venue ID or URL" field. Don't worry about the venue ID number — we'll figure it out from the URL.</li>
+        <li><strong>Type the restaurant name, pick your party size, click Save.</strong></li>
+        <li>Repeat for each restaurant you want to watch!</li>
+      </ol>
+
+      <div class="callout callout-tip">
+        <strong>Pro tip:</strong> Hit the "Preferences" tab next to set your time window (e.g. 6–8 PM), how many days ahead to check, and how often.
+      </div>
+    </div>
+
+    <!-- STEP 5 -->
+    <div class="step">
+      <div class="step-number">5</div>
+      <div class="step-eyebrow">About 2 minutes</div>
+      <h3 class="step-title">Turn it on</h3>
+      <p class="step-desc">
+        Your watchlist is set up — now let's actually start the monitoring. You have two options, from easiest to nerdiest.
+      </p>
+
+      <strong style="font-size: 13px;">Option A — Easy (hosted, recommended):</strong>
+      <ol>
+        <li>On your Account page, flip the "Monitoring" switch to ON.</li>
+        <li>That's it. Our free hosted service runs your checks on a schedule. You can close this browser tab and your phone will still buzz when a slot opens.</li>
+      </ol>
+
+      <strong style="font-size: 13px;">Option B — Nerdy (run it yourself):</strong>
+      <p style="font-size: 13px; color: var(--text-secondary); margin: 8px 0 12px;">
+        If you'd rather run the checker on your own laptop or a Raspberry Pi (e.g., for full control), download the code below.
+      </p>
+      <div class="code-block">git clone https://github.com/mise-en-place/checker
+cd checker
+npm install
+cp .env.example .env
+# paste your keys into .env
+npm start</div>
+
+      <div class="callout callout-tip">
+        <strong>You're done!</strong> Go cook something, or go for a walk. Your phone will buzz when Don Angie has a 7 PM table.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<!-- ACCOUNT TAB                              -->
+<!-- ─────────────────────────────────────── -->
+<div class="tab-content" id="tab-account">
+  <div class="main-wide">
+    <div class="section-header">
+      <h2 class="section-title">Account & API Keys</h2>
+      <span class="section-meta">Nancy · Member since Apr 2026</span>
+    </div>
+
+    <div class="account-section">
+      <div class="account-header">Profile</div>
+      <div class="field-row">
+        <div>
+          <div class="field-label">Email</div>
+          <div class="field-desc">Used for sign-in and account recovery.</div>
+        </div>
+        <div class="field-input-wrap">
+          <input class="form-input" value="nancy@example.com">
+        </div>
+      </div>
+      <div class="field-row">
+        <div>
+          <div class="field-label">Display Name</div>
+        </div>
+        <div class="field-input-wrap">
+          <input class="form-input" value="Nancy">
+        </div>
+      </div>
+    </div>
+
+    <div class="account-section">
+      <div class="account-header">Resy</div>
+      <div class="field-row">
+        <div>
+          <div class="field-label">Resy API Key</div>
+          <div class="field-desc">Paste your key here. Need help getting one? See the Setup Guide.</div>
+        </div>
+        <div class="field-input-wrap">
+          <input class="form-input" type="password" placeholder="AIcdK2rLXG6TYwJseSbmrBAy3RP81ocd" value="AIcdK2rLXG6TYwJseSbmrBAy3RP81ocd">
+        </div>
+      </div>
+    </div>
+
+    <div class="account-section">
+      <div class="account-header">Notifications (ntfy.sh)</div>
+      <div class="field-row">
+        <div>
+          <div class="field-label">ntfy Topic Name</div>
+          <div class="field-desc">Just the topic — no URL prefix. e.g. <span class="code">reso-nancy-x9k2</span></div>
+        </div>
+        <div class="field-input-wrap">
+          <input class="form-input" placeholder="reso-yourname-secret" value="reso-nancy-x9k2-dinner">
+          <button class="btn btn-secondary btn-small" style="align-self: flex-start; margin-top: 8px;" onclick="alert('📱 Test notification sent! Check your phone.')">Send Test Notification</button>
+        </div>
+      </div>
+      <div class="field-row">
+        <div>
+          <div class="field-label">Priority</div>
+          <div class="field-desc">How urgently to notify. High = sound + vibration even on silent.</div>
+        </div>
+        <div class="field-input-wrap">
+          <select class="form-select">
+            <option>Low — silent notification</option>
+            <option selected>Default — normal notification</option>
+            <option>High — buzz even on silent</option>
+            <option>Max — override Do Not Disturb</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="account-section">
+      <div class="account-header">Monitoring</div>
+      <div class="field-row">
+        <div>
+          <div class="field-label">Monitoring Status</div>
+          <div class="field-desc">Turn off to pause all checks (you won't get notifications).</div>
+        </div>
+        <div class="field-input-wrap">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <button class="toggle active" onclick="this.classList.toggle('active')"></button>
+            <span style="font-size: 13px; font-weight: 500;">ON</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; padding-top: 20px; border-top: 1px solid var(--border-hair); margin-top: 20px;">
+      <button class="btn btn-secondary">Delete Account</button>
+      <button class="btn btn-primary">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<!-- FOOTER                                   -->
+<!-- ─────────────────────────────────────── -->
+<footer class="footer">
+  Mise en Place · $0/month forever · Built with direct API calls + ntfy.sh
+</footer>
+
+<script>
+// ── DATA ──────────────────────────────────────
+let restaurants = [
+  { id: 1, name: "Don Angie", platform: "resy", venueId: "1505", partySize: 2, active: true, lastChecked: null, slots: [] },
+  { id: 2, name: "Via Carota", platform: "resy", venueId: "443", partySize: 2, active: true, lastChecked: null, slots: [] },
+  { id: 3, name: "4 Charles Prime Rib", platform: "resy", venueId: "834", partySize: 2, active: true, lastChecked: null, slots: [] },
+  { id: 4, name: "Le Bernardin", platform: "opentable", venueId: "le-bernardin", partySize: 2, active: false, lastChecked: null, slots: [] },
+  { id: 5, name: "Atomix", platform: "resy", venueId: "2102", partySize: 2, active: true, lastChecked: null, slots: [] },
+  { id: 6, name: "Rezdôra", platform: "resy", venueId: "3421", partySize: 2, active: true, lastChecked: null, slots: [] },
+];
+
+let logs = [
+  { time: "14:41", type: "check", message: "Checked <strong>Don Angie</strong> — no slots in 18:00–20:00 window" },
+  { time: "14:41", type: "check", message: "Checked <strong>Via Carota</strong> — no slots in 18:00–20:00 window" },
+  { time: "14:40", type: "found", message: "<strong>Atomix</strong> — 19:00 slot available for 2 guests on Apr 22" },
+  { time: "14:40", type: "notify", message: "Push sent via ntfy.sh → reso-nancy-x9k2-dinner" },
+  { time: "14:35", type: "check", message: "Checked <strong>4 Charles Prime Rib</strong> — no slots in 18:00–20:00 window" },
+  { time: "14:30", type: "system", message: "Monitoring cycle started — 4 restaurants active, 14 day window" },
+  { time: "14:25", type: "check", message: "Checked <strong>Rezdôra</strong> — no slots in 18:00–20:00 window" },
+];
+
+// ── RENDER ────────────────────────────────────
+function render() {
+  const list = document.getElementById('restaurantList');
+  const activeCount = restaurants.filter(r => r.active).length;
+  const slotsFound = restaurants.filter(r => r.slots.length > 0).length;
+
+  document.getElementById('activeCount').textContent = activeCount;
+  document.getElementById('slotsCount').textContent = slotsFound;
+
+  const slotsDot = document.getElementById('slotsDot');
+  slotsDot.className = `dot ${slotsFound > 0 ? 'green' : 'yellow'}`;
+
+  list.innerHTML = restaurants.map(r => `
+    <div class="restaurant-card ${r.slots.length > 0 ? 'has-slots' : ''} ${!r.active ? 'inactive' : ''}">
+      <div class="card-controls">
+        <button class="toggle ${r.active ? 'active' : ''}" onclick="toggleRestaurant(${r.id})"></button>
+        <button class="icon-btn" onclick="removeRestaurant(${r.id})" title="Remove">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+      </div>
+      <span class="platform-tag ${r.platform}">${r.platform}</span>
+      <div class="restaurant-name">${r.name}</div>
+      <div class="restaurant-meta">
+        ${r.partySize} guests · ID ${r.venueId} · ${r.lastChecked ? 'Checked ' + r.lastChecked : 'Pending first check'}
+      </div>
+      ${r.slots.length > 0 ? `
+        <div class="restaurant-slots">
+          ${r.slots.map(s => `<span class="slot-chip">${s}</span>`).join('')}
+        </div>
+      ` : r.active ? `<div class="restaurant-empty-slots">No slots in window · checking again in 5 min</div>` : `<div class="restaurant-empty-slots">Paused</div>`}
+    </div>
+  `).join('');
+
+  renderLogs();
+}
+
+function renderLogs() {
+  const logList = document.getElementById('logList');
+  logList.innerHTML = logs.map(l => `
+    <div class="log-item">
+      <span class="log-time">${l.time}</span>
+      <span class="log-tag ${l.type}">${l.type}</span>
+      <span class="log-message">${l.message}</span>
+    </div>
+  `).join('');
+}
+
+// ── ACTIONS ───────────────────────────────────
+function switchTab(e, tabId) {
+  document.querySelectorAll('.primary-nav button').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  e.target.classList.add('active');
+  document.getElementById('tab-' + tabId).classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function switchTabByName(tabId) {
+  document.querySelectorAll('.primary-nav button').forEach((t, i) => {
+    t.classList.remove('active');
+    if (t.getAttribute('onclick')?.includes(`'${tabId}'`)) t.classList.add('active');
+  });
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + tabId).classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function toggleAddForm() {
+  document.getElementById('addForm').classList.toggle('visible');
+}
+
+function addRestaurant() {
+  const name = document.getElementById('newName').value.trim();
+  if (!name) return;
+  restaurants.push({
+    id: Date.now(),
+    name,
+    platform: document.getElementById('newPlatform').value,
+    venueId: document.getElementById('newVenueId').value || '—',
+    partySize: parseInt(document.getElementById('newPartySize').value),
+    active: true,
+    lastChecked: null,
+    slots: [],
+  });
+  document.getElementById('newName').value = '';
+  document.getElementById('newVenueId').value = '';
+  toggleAddForm();
+  render();
+}
+
+function toggleRestaurant(id) {
+  const r = restaurants.find(r => r.id === id);
+  if (r) r.active = !r.active;
+  render();
+}
+
+function removeRestaurant(id) {
+  restaurants = restaurants.filter(r => r.id !== id);
+  render();
+}
+
+function simulateCheck() {
+  const now = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  const newLogs = [];
+
+  restaurants.forEach(r => {
+    if (!r.active) return;
+    const hasSlot = Math.random() > 0.7;
+    r.lastChecked = now;
+    if (hasSlot) {
+      const h = 18 + Math.floor(Math.random() * 2);
+      const m = Math.random() > 0.5 ? '00' : '30';
+      r.slots = [`${h}:${m}`];
+      const dayOffset = Math.floor(Math.random() * 14) + 1;
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + dayOffset);
+      const dateStr = futureDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      newLogs.push({ time: now, type: 'found', message: `<strong>${r.name}</strong> — ${h}:${m} slot available for ${r.partySize} guests on ${dateStr}` });
+      newLogs.push({ time: now, type: 'notify', message: `Push sent via ntfy.sh → reso-nancy-x9k2-dinner` });
+    } else {
+      r.slots = [];
+      newLogs.push({ time: now, type: 'check', message: `Checked <strong>${r.name}</strong> — no slots in 18:00–20:00 window` });
+    }
+  });
+
+  newLogs.unshift({ time: now, type: 'system', message: `Monitoring cycle started — ${restaurants.filter(r => r.active).length} restaurants active, 14 day window` });
+  logs = [...newLogs.reverse(), ...logs].slice(0, 40);
+  render();
+}
+
+function updatePrefs() {
+  const earliest = document.getElementById('prefEarliest').value;
+  const latest = document.getElementById('prefLatest').value;
+  const days = document.getElementById('prefDays').value;
+  const interval = document.getElementById('prefInterval2').value;
+
+  document.getElementById('prefWindow').textContent = `${earliest} – ${latest}`;
+  document.getElementById('prefRange').textContent = `Next ${days} day${days !== '1' ? 's' : ''}`;
+  document.getElementById('prefInterval').textContent = `${interval} minute${interval !== '1' ? 's' : ''}`;
+
+  // convert 18:00 to 6 PM format for status bar
+  const to12h = (t) => {
+    const [h, m] = t.split(':').map(Number);
+    const period = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    return m === 0 ? `${h12} ${period}` : `${h12}:${String(m).padStart(2, '0')} ${period}`;
+  };
+  document.getElementById('statusWindow').textContent = `${to12h(earliest)}–${to12h(latest)}`;
+  document.getElementById('statusRange').textContent = `${days} days`;
+  document.getElementById('statusInterval').textContent = `${interval} min`;
+}
+
+function switchAuthTab(e, which) {
+  document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+  e.target.classList.add('active');
+}
+
+function openAuth() {
+  document.getElementById('authOverlay').classList.add('visible');
+}
+
+function closeAuth() {
+  document.getElementById('authOverlay').classList.remove('visible');
+}
+
+// ── INIT ──────────────────────────────────────
+render();
+</script>
+
+</body>
+</html>

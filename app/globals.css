@@ -1,0 +1,163 @@
+@import "tailwindcss";
+
+/* ─── Design tokens ─── */
+:root {
+  --bg: #FFFFFF;
+  --bg-muted: #FAFAF8;
+  --bg-input: #FFFFFF;
+  --border: #1A1A1A;
+  --border-light: #E4E4E0;
+  --border-hair: #EBEBE7;
+  --text: #1A1A1A;
+  --text-secondary: #5A5A5A;
+  --text-muted: #8A8A8A;
+
+  --tag-blue: #2147C7;
+  --tag-yellow: #F4D53D;
+  --tag-cyan: #3BC9E6;
+  --tag-green: #17AC10;
+  --tag-orange: #E98024;
+  --tag-red: #DC3545;
+
+  --green-light: #F0F8EF;
+  --red-light: #FDEDED;
+  --yellow-light: #FEFAE8;
+}
+
+/* ─── Tailwind v4 theme ─── */
+@theme {
+  --color-bg: var(--bg);
+  --color-bg-muted: var(--bg-muted);
+  --color-border: var(--border);
+  --color-border-light: var(--border-light);
+  --color-border-hair: var(--border-hair);
+  --color-text-base: var(--text);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-tag-blue: var(--tag-blue);
+  --color-tag-yellow: var(--tag-yellow);
+  --color-tag-cyan: var(--tag-cyan);
+  --color-tag-green: var(--tag-green);
+  --color-tag-orange: var(--tag-orange);
+  --color-tag-red: var(--tag-red);
+  --color-green-light: var(--green-light);
+  --color-red-light: var(--red-light);
+  --color-yellow-light: var(--yellow-light);
+
+  --font-family-serif: var(--font-playfair), Georgia, 'Times New Roman', serif;
+  --font-family-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+  --font-family-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --radius-none: 0px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-family-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ─── Shared form styles ─── */
+.form-input,
+.form-select {
+  padding: 10px 12px;
+  border: 1px solid var(--border-light);
+  background: var(--bg);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+  border-radius: 0;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.form-input:focus,
+.form-select:focus {
+  border-color: var(--border);
+}
+
+.form-input::placeholder {
+  color: var(--text-muted);
+}
+
+/* ─── Inline code ─── */
+.code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: var(--bg-muted);
+  border: 1px solid var(--border-light);
+  padding: 2px 6px;
+  letter-spacing: 0.02em;
+}
+
+/* ─── Code block ─── */
+.code-block {
+  background: var(--text);
+  color: #E4E4E0;
+  padding: 18px 20px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.65;
+  overflow-x: auto;
+  white-space: pre;
+  margin: 16px 0;
+  letter-spacing: 0.01em;
+}
+
+/* ─── Animations ─── */
+@keyframes slotIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinner {
+  animation: spin 0.8s linear infinite;
+}
+
+.animate-slot-in {
+  animation: slotIn 0.3s ease-out;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s ease-out;
+}
