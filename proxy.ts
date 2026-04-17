@@ -10,6 +10,7 @@ const PUBLIC_PATHS = [
   '/api/cron/check-all',
   '/api/admin/fix-venue-ids',
   '/api/admin/debug-resy',
+  '/api/admin/debug-opentable',
 ];
 
 export async function proxy(request: NextRequest) {
