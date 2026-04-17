@@ -37,15 +37,17 @@ export async function checkUserWatchlist(userId: string): Promise<CheckResult[]>
     .single();
 
   if (settingsErr || !settings) {
-    console.error(`[checker] no settings for user ${userId}`);
-    return [];
+    throw new Error(`No settings found for user. Please save your account settings first.`);
   }
 
-  if (!settings.monitoring_enabled) return [];
+  if (!settings.monitoring_enabled) {
+    throw new Error(`Monitoring is disabled. Enable it in your Account settings.`);
+  }
 
   const now = new Date();
+  const currentTime = now.toUTCString();
   if (!isCurrentTimeInActiveHours(settings.active_hours_start, settings.active_hours_end, now)) {
-    return [];
+    throw new Error(`Outside active hours (${settings.active_hours_start}–${settings.active_hours_end}). Current server time: ${currentTime}`);
   }
 
   // Load active restaurants
@@ -55,7 +57,8 @@ export async function checkUserWatchlist(userId: string): Promise<CheckResult[]>
     .eq('user_id', userId)
     .eq('active', true);
 
-  if (restErr || !restaurants?.length) return [];
+  if (restErr) throw new Error(`Failed to load restaurants: ${restErr.message}`);
+  if (!restaurants?.length) throw new Error(`No active restaurants found on your watchlist.`);
 
   const apiKey: string = settings.resy_api_key ?? '';
   const dates = getDateRange(settings.day_range, settings.days_of_week);
