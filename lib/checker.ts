@@ -60,7 +60,7 @@ export async function checkUserWatchlist(userId: string): Promise<CheckResult[]>
   if (restErr) throw new Error(`Failed to load restaurants: ${restErr.message}`);
   if (!restaurants?.length) throw new Error(`No active restaurants found on your watchlist.`);
 
-  const apiKey: string = settings.resy_api_key ?? '';
+  const apiKey: string = process.env.RESY_API_KEY ?? settings.resy_api_key ?? '';
   const dates = getDateRange(settings.day_range, settings.days_of_week);
 
   // Check all restaurants in parallel
