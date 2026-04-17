@@ -114,7 +114,7 @@ export async function resolveResyVenueId(
 
   // 1. Try the venue lookup endpoint directly
   try {
-    const r = await fetch(`https://api.resy.com/3/venue?url_slug=${slug}&location=us-ny`, { headers });
+    const r = await fetch(`https://api.resy.com/3/venue?url_slug=${slug}&location=ny`, { headers });
     if (r.ok) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data = await r.json() as any;
