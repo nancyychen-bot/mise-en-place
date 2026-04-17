@@ -9,7 +9,6 @@ import Toggle from '@/components/toggle';
 interface AccountData {
   email: string;
   displayName: string | null;
-  resyApiKey: string | null;
   ntfyTopic: string | null;
   ntfyPriority: NtfyPriority;
   monitoringEnabled: boolean;
@@ -32,13 +31,11 @@ export default function AccountPage() {
   const [data, setData] = useState<AccountData>({
     email: '',
     displayName: null,
-    resyApiKey: null,
     ntfyTopic: null,
     ntfyPriority: 'default',
     monitoringEnabled: true,
   });
 
-  const [resyKeyInput, setResyKeyInput] = useState('');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -66,11 +63,6 @@ export default function AccountPage() {
       monitoringEnabled: data.monitoringEnabled,
     };
 
-    // Only include API key if user typed something new
-    if (resyKeyInput.trim()) {
-      payload.resyApiKey = resyKeyInput.trim();
-    }
-
     try {
       const res = await fetch('/api/account', {
         method: 'PATCH',
@@ -85,8 +77,7 @@ export default function AccountPage() {
       }
 
       setSaved(true);
-      setResyKeyInput('');
-      // Refresh masked key
+      // Refresh
       const fresh = await fetch('/api/account').then((r) => r.json());
       setData(fresh);
       setTimeout(() => setSaved(false), 3000);
@@ -149,29 +140,6 @@ export default function AccountPage() {
               value={data.email}
               onChange={(e) => setData((d) => ({ ...d, email: e.target.value }))}
             />
-          </FieldRow>
-        </div>
-
-        {/* Resy */}
-        <div style={sectionStyle}>
-          <h2 style={sectionHeaderStyle}>Resy</h2>
-          <FieldRow
-            label="Resy API Key"
-            description="Found in your browser's DevTools when logged into Resy. See Setup Guide for instructions."
-          >
-            <input
-              type="password"
-              style={inputStyle}
-              value={resyKeyInput}
-              onChange={(e) => setResyKeyInput(e.target.value)}
-              placeholder={data.resyApiKey ? `Current: ${data.resyApiKey}` : 'Paste your API key'}
-              autoComplete="off"
-            />
-            {data.resyApiKey && !resyKeyInput && (
-              <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                A key is saved. Leave blank to keep it, or type a new one to replace it.
-              </p>
-            )}
           </FieldRow>
         </div>
 

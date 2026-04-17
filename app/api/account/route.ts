@@ -4,10 +4,6 @@ import { requireUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 
-function maskKey(key: string | null): string | null {
-  if (!key || key.length < 4) return null;
-  return `••••••••${key.slice(-4)}`;
-}
 
 export async function GET() {
   const user = await requireUser().catch(() => null);
@@ -21,14 +17,13 @@ export async function GET() {
 
   const { data: settings } = await db
     .from('user_settings')
-    .select('resy_api_key, ntfy_topic, ntfy_priority, monitoring_enabled')
+    .select('ntfy_topic, ntfy_priority, monitoring_enabled')
     .eq('user_id', user.id)
     .single();
 
   return NextResponse.json({
     email: profile?.email ?? user.email,
     displayName: profile?.display_name ?? null,
-    resyApiKey: maskKey(settings?.resy_api_key ?? null),
     ntfyTopic: settings?.ntfy_topic ?? null,
     ntfyPriority: settings?.ntfy_priority ?? 'default',
     monitoringEnabled: settings?.monitoring_enabled ?? true,
@@ -38,7 +33,6 @@ export async function GET() {
 const PatchSchema = z.object({
   email: z.string().email().optional(),
   displayName: z.string().max(80).optional(),
-  resyApiKey: z.string().optional(),
   ntfyTopic: z.string().max(100).optional(),
   ntfyPriority: z.enum(['min', 'low', 'default', 'high', 'max']).optional(),
   monitoringEnabled: z.boolean().optional(),
@@ -79,7 +73,6 @@ export async function PATCH(req: NextRequest) {
 
   // Update settings
   const settingsUpdate: Record<string, unknown> = { updated_at: new Date().toISOString() };
-  if (d.resyApiKey !== undefined) settingsUpdate.resy_api_key = d.resyApiKey;
   if (d.ntfyTopic !== undefined) {
     // Strip any URL prefix users might accidentally include (e.g. "ntfy.sh/topic")
     const topic = d.ntfyTopic.replace(/^https?:\/\/[^/]+\//, '').replace(/^ntfy\.sh\//, '');
