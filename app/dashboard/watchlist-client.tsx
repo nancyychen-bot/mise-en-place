@@ -64,6 +64,27 @@ export default function WatchlistClient({
     }
   }
 
+  const [checking, setChecking] = useState(false);
+  const [checkMsg, setCheckMsg] = useState<string | null>(null);
+
+  async function handleCheckNow() {
+    setChecking(true);
+    setCheckMsg(null);
+    try {
+      const res = await fetch('/api/check-now', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        setCheckMsg('Check complete! Refresh to see updated results.');
+      } else {
+        setCheckMsg(data.error ?? 'Something went wrong.');
+      }
+    } catch {
+      setCheckMsg('Network error.');
+    } finally {
+      setChecking(false);
+    }
+  }
+
   const isEmpty = restaurants.length === 0;
 
   return (
@@ -81,6 +102,19 @@ export default function WatchlistClient({
       />
 
       <PreferencesBar settings={settings} />
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+        <button
+          className="btn btn-primary"
+          onClick={handleCheckNow}
+          disabled={checking}
+        >
+          {checking ? 'Checking…' : 'Check Now'}
+        </button>
+        {checkMsg && (
+          <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{checkMsg}</span>
+        )}
+      </div>
 
       <AddRestaurantForm onAdd={handleAdd} />
 
