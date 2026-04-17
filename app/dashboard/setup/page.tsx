@@ -185,77 +185,9 @@ export default function SetupPage() {
       </Step>
 
       {/* Step 2 */}
-      <Step number={2} eyebrow="About 5 minutes" title="Get your Resy API key">
+      <Step number={2} eyebrow="About 2 minutes" title="Set up your ntfy topic in Account">
         <p style={descStyle}>
-          Resy has a public API — basically, a &ldquo;phone line&rdquo; that their own website uses to
-          check availability. We&rsquo;re going to borrow that same phone line. You need a small key
-          that lets you make calls on it. It&rsquo;s free and Resy gives the same key to everyone who
-          uses their site.
-        </p>
-
-        <Callout variant="info">
-          <strong>Heads up:</strong> This part sounds scary but it&rsquo;s not. You&rsquo;re just
-          copying one line of text from your browser&rsquo;s &ldquo;DevTools.&rdquo; Think of it like
-          viewing the source code of a website — totally safe, nothing breaks.
-        </Callout>
-
-        <strong style={{ fontSize: '13px' }}>Do this:</strong>
-        <ol style={{ margin: '16px 0 16px 22px', fontSize: '14px', lineHeight: 1.7, color: 'var(--text)' }}>
-          <li style={{ marginBottom: '8px' }}>
-            <strong>Open Google Chrome</strong> on your computer (not your phone). If you don&rsquo;t
-            have Chrome, Safari or Firefox works too.
-          </li>
-          <li style={{ marginBottom: '8px' }}>
-            <strong>Go to resy.com</strong> and click on any restaurant — for example, search for
-            &ldquo;Don Angie.&rdquo;
-          </li>
-          <li style={{ marginBottom: '8px' }}>
-            <strong>Open DevTools.</strong> Right-click anywhere on the page and choose{' '}
-            <em>&ldquo;Inspect.&rdquo;</em> A panel will pop up on the right or bottom of your browser.
-            Don&rsquo;t worry — nothing is broken.
-          </li>
-          <li style={{ marginBottom: '8px' }}>
-            <strong>Click the &ldquo;Network&rdquo; tab</strong> at the top of the panel.
-          </li>
-          <li style={{ marginBottom: '8px' }}>
-            <strong>Refresh the page</strong> (Cmd+R on Mac, Ctrl+R on Windows). You&rsquo;ll see a
-            waterfall of tiny rows appear.
-          </li>
-          <li style={{ marginBottom: '8px' }}>
-            <strong>
-              Type &ldquo;find&rdquo; in the Filter box
-            </strong>{' '}
-            (usually at the top of the Network panel). You should see rows that start with{' '}
-            <code className="code">find?</code>.
-          </li>
-          <li style={{ marginBottom: '8px' }}>
-            <strong>Click on one of those rows.</strong> A new sub-panel opens. Scroll down until you
-            see <em>&ldquo;Request Headers.&rdquo;</em>
-          </li>
-          <li style={{ marginBottom: '8px' }}>
-            <strong>
-              Find the line that starts with <code className="code">Authorization:</code>
-            </strong>{' '}
-            It looks like:{' '}
-            <code className="code">ResyAPI api_key=&ldquo;AIcdK2rLXG6TYwJseSbmrBAy3RP81ocd&rdquo;</code>
-          </li>
-          <li style={{ marginBottom: '8px' }}>
-            <strong>Copy everything inside the quotation marks</strong> — that&rsquo;s your API key.
-            It&rsquo;s about 30 characters long.
-          </li>
-        </ol>
-
-        <Callout variant="warn">
-          <strong>Can&rsquo;t find it?</strong> Try a different restaurant page or refresh and look
-          again. Sometimes Safari hides things — Chrome is most reliable for this step.
-        </Callout>
-      </Step>
-
-      {/* Step 3 */}
-      <Step number={3} eyebrow="About 2 minutes" title="Paste your keys into your Account">
-        <p style={descStyle}>
-          Now we&rsquo;ll store the two things you just got — your ntfy topic name and your Resy API
-          key — so Mise en Place can use them.
+          Now we&rsquo;ll link your ntfy topic to Mise en Place so it knows where to send alerts.
         </p>
 
         <strong style={{ fontSize: '13px' }}>Do this:</strong>
@@ -271,9 +203,6 @@ export default function SetupPage() {
             at the top of this page.
           </li>
           <li style={{ marginBottom: '8px' }}>
-            <strong>Paste your Resy API key</strong> into the Resy API Key field.
-          </li>
-          <li style={{ marginBottom: '8px' }}>
             <strong>Paste your ntfy topic</strong> into the Notifications field. It should be just the
             name, like <code className="code">reso-nancy-x9k2-dinner</code> — no https:// in front.
           </li>
@@ -287,8 +216,8 @@ export default function SetupPage() {
         </ol>
       </Step>
 
-      {/* Step 4 */}
-      <Step number={4} eyebrow="About 3 minutes" title="Add your first restaurant">
+      {/* Step 3 */}
+      <Step number={3} eyebrow="About 3 minutes" title="Add your first restaurant">
         <p style={descStyle}>
           Time for the fun part. Let&rsquo;s add a restaurant to your watchlist so Mise en Place knows
           what to watch.
@@ -329,8 +258,8 @@ export default function SetupPage() {
         </Callout>
       </Step>
 
-      {/* Step 5 */}
-      <Step number={5} eyebrow="About 2 minutes" title="Turn it on">
+      {/* Step 4 */}
+      <Step number={4} eyebrow="About 2 minutes" title="Turn it on">
         <p style={descStyle}>
           Your watchlist is set up — now let&rsquo;s actually start the monitoring. You have two
           options, from easiest to nerdiest.
