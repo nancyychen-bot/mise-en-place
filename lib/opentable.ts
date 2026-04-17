@@ -1,6 +1,48 @@
 import type { Slot } from './types';
 
 /**
+ * Resolves an OpenTable URL slug (e.g. "sunns-new-york") to a numeric restaurant ID.
+ * Scrapes the OpenTable restaurant page and extracts the rid from embedded JSON.
+ * Returns null if resolution fails.
+ */
+export async function resolveOpenTableVenueId(slugOrUrl: string): Promise<string | null> {
+  if (/^\d+$/.test(slugOrUrl.trim())) return slugOrUrl.trim();
+
+  let slug = slugOrUrl.trim();
+  try {
+    const url = new URL(slugOrUrl);
+    if (url.hostname.includes('opentable.com')) {
+      const m = url.pathname.match(/\/(?:r\/)?([^/?#]+)/);
+      if (m) slug = m[1];
+    }
+  } catch { /* raw slug */ }
+
+  try {
+    const pageRes = await fetch(`https://www.opentable.com/r/${encodeURIComponent(slug)}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36',
+        Accept: 'text/html,application/xhtml+xml',
+      },
+    });
+
+    if (!pageRes.ok) return null;
+    const html = await pageRes.text();
+
+    // OpenTable embeds restaurant data in __NEXT_DATA__
+    const m1 = html.match(/"rid"\s*:\s*(\d+)/);
+    if (m1) return m1[1];
+    const m2 = html.match(/"restaurantId"\s*:\s*(\d+)/);
+    if (m2) return m2[1];
+    const m3 = html.match(/"restaurant_id"\s*:\s*(\d+)/);
+    if (m3) return m3[1];
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * OpenTable availability via their public widget endpoint.
  * This endpoint is less stable than Resy and may change shape.
  * We wrap it defensively — any failure returns [].
