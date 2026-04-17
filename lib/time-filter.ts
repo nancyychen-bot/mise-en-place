@@ -53,9 +53,10 @@ export function isDayOfWeekAllowed(date: Date, pattern: DaysOfWeek): boolean {
 export function isCurrentTimeInActiveHours(
   start: string,
   end: string,
-  now: Date = new Date()
+  now: Date = new Date(),
+  timezone = 'America/New_York'
 ): boolean {
-  const current = toHHMM(now);
+  const current = toHHMMInZone(now, timezone);
   return current >= start && current < end;
 }
 
@@ -67,23 +68,36 @@ export function isCurrentTimeInActiveHours(
 export function isCurrentTimeInQuietHours(
   start: string,
   end: string,
-  now: Date = new Date()
+  now: Date = new Date(),
+  timezone = 'America/New_York'
 ): boolean {
-  const current = toHHMM(now);
+  const current = toHHMMInZone(now, timezone);
 
   if (start <= end) {
-    // Normal range (e.g. "09:00"–"17:00")
     return current >= start && current < end;
   } else {
-    // Midnight-spanning range (e.g. "22:00"–"07:00")
     return current >= start || current < end;
   }
 }
 
-function toHHMM(date: Date): string {
-  const h = String(date.getHours()).padStart(2, '0');
-  const m = String(date.getMinutes()).padStart(2, '0');
-  return `${h}:${m}`;
+function toHHMMInZone(date: Date, timezone: string): string {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: timezone,
+    }).formatToParts(date);
+    const h = parts.find((p) => p.type === 'hour')?.value ?? '00';
+    const m = parts.find((p) => p.type === 'minute')?.value ?? '00';
+    // hour12:false can return "24" at midnight — normalize to "00"
+    return `${h === '24' ? '00' : h}:${m}`;
+  } catch {
+    // Fallback to UTC if timezone is invalid
+    const h = String(date.getUTCHours()).padStart(2, '0');
+    const m = String(date.getUTCMinutes()).padStart(2, '0');
+    return `${h}:${m}`;
+  }
 }
 
 /**

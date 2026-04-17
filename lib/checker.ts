@@ -46,7 +46,8 @@ export async function checkUserWatchlist(userId: string): Promise<CheckResult[]>
 
   const now = new Date();
   const currentTime = now.toUTCString();
-  if (!isCurrentTimeInActiveHours(settings.active_hours_start, settings.active_hours_end, now)) {
+  const tz: string = settings.timezone ?? 'America/New_York';
+  if (!isCurrentTimeInActiveHours(settings.active_hours_start, settings.active_hours_end, now, tz)) {
     throw new Error(`Outside active hours (${settings.active_hours_start}–${settings.active_hours_end}). Current server time: ${currentTime}`);
   }
 
@@ -117,7 +118,7 @@ export async function checkUserWatchlist(userId: string): Promise<CheckResult[]>
           const dateList = [...new Set(foundSlots.map((s) => s.date))].join(', ');
           const foundMsg = `🍽 <strong>${restaurant.name}</strong> — ${timeList} on ${dateList}`;
 
-          const inQuiet = isCurrentTimeInQuietHours(settings.quiet_hours_start, settings.quiet_hours_end, now);
+          const inQuiet = isCurrentTimeInQuietHours(settings.quiet_hours_start, settings.quiet_hours_end, now, tz);
 
           await Promise.all([
             db.from('activity_log').insert({ user_id: userId, restaurant_id: restaurant.id, type: 'found', message: foundMsg }),

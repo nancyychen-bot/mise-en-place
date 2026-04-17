@@ -12,6 +12,7 @@ interface AccountData {
   ntfyTopic: string | null;
   ntfyPriority: NtfyPriority;
   monitoringEnabled: boolean;
+  timezone: string;
 }
 
 const sectionStyle: React.CSSProperties = {
@@ -34,6 +35,7 @@ export default function AccountPage() {
     ntfyTopic: null,
     ntfyPriority: 'default',
     monitoringEnabled: true,
+    timezone: 'America/New_York',
   });
 
   const [saving, setSaving] = useState(false);
@@ -61,6 +63,7 @@ export default function AccountPage() {
       ntfyTopic: data.ntfyTopic ?? undefined,
       ntfyPriority: data.ntfyPriority,
       monitoringEnabled: data.monitoringEnabled,
+      timezone: data.timezone,
     };
 
     try {
@@ -196,6 +199,28 @@ export default function AccountPage() {
         {/* Monitoring */}
         <div style={sectionStyle}>
           <h2 style={sectionHeaderStyle}>Monitoring</h2>
+          <FieldRow
+            label="Timezone"
+            description="Used to interpret your active hours and quiet hours correctly."
+          >
+            <select
+              style={{ ...inputStyle, appearance: 'none' }}
+              value={data.timezone}
+              onChange={(e) => setData((d) => ({ ...d, timezone: e.target.value }))}
+            >
+              <option value="America/New_York">Eastern Time (ET)</option>
+              <option value="America/Chicago">Central Time (CT)</option>
+              <option value="America/Denver">Mountain Time (MT)</option>
+              <option value="America/Los_Angeles">Pacific Time (PT)</option>
+              <option value="America/Anchorage">Alaska Time (AKT)</option>
+              <option value="Pacific/Honolulu">Hawaii Time (HT)</option>
+              <option value="Europe/London">London (GMT/BST)</option>
+              <option value="Europe/Paris">Paris (CET/CEST)</option>
+              <option value="Asia/Tokyo">Tokyo (JST)</option>
+              <option value="Asia/Shanghai">Shanghai (CST)</option>
+              <option value="Australia/Sydney">Sydney (AEST)</option>
+            </select>
+          </FieldRow>
           <FieldRow
             label="Monitoring Enabled"
             description="Toggle to pause all checks without removing your watchlist."
