@@ -10,7 +10,7 @@ export default function Masthead({ user }: MastheadProps) {
     <header
       style={{
         borderBottom: '1px solid var(--border)',
-        padding: '28px 40px 20px',
+        padding: '20px 24px 16px',
         position: 'relative',
       }}
     >
@@ -71,7 +71,7 @@ export default function Masthead({ user }: MastheadProps) {
         <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
           {user && (
             <>
-              <span style={{ color: 'var(--text-muted)' }}>{user.email}</span>
+              <span style={{ color: 'var(--text-muted)' }} className="max-[600px]:hidden">{user.email}</span>
               <SignOutButton />
             </>
           )}
@@ -96,12 +96,12 @@ export default function Masthead({ user }: MastheadProps) {
           style={{
             fontFamily: 'var(--font-family-serif)',
             fontWeight: 900,
-            fontSize: '56px',
             letterSpacing: '-0.02em',
             lineHeight: '0.95',
             color: 'var(--text)',
             display: 'inline-block',
           }}
+          className="text-[56px] max-[600px]:text-[36px]"
         >
           MISE EN PLACE
           <sup

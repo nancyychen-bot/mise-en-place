@@ -55,11 +55,9 @@ export default function PreferencesBar({ settings }: PreferencesBarProps) {
         border: '1px solid var(--border-light)',
         padding: '20px 24px',
         marginBottom: '32px',
-        display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
-        gap: '24px',
+        gap: '16px',
       }}
-      className="max-[720px]:grid-cols-1"
+      className="grid grid-cols-2 min-[720px]:grid-cols-4"
     >
       {prefs.map(({ label, value }, i) => (
         <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>

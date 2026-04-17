@@ -31,7 +31,11 @@ export default function PrimaryNav() {
         fontWeight: 600,
         letterSpacing: '0.1em',
         textTransform: 'uppercase',
+        overflowX: 'auto',
+        WebkitOverflowScrolling: 'touch',
+        scrollbarWidth: 'none',
       }}
+      className="max-[600px]:justify-start max-[600px]:px-4"
     >
       {NAV_ITEMS.map(({ label, href }) => (
         <Link
