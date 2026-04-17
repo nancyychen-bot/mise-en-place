@@ -4,6 +4,7 @@ import { requireUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { parseResyVenueInput, parseOpenTableVenueInput } from '@/lib/venue-parser';
 import { resolveResyVenueId } from '@/lib/resy';
+import { resolveOpenTableVenueId } from '@/lib/opentable';
 
 export async function GET() {
   const user = await requireUser().catch(() => null);
@@ -59,7 +60,13 @@ export async function POST(req: NextRequest) {
       venueId = raw;
     }
   } else {
-    venueId = parseOpenTableVenueInput(venueIdOrUrl);
+    const raw = parseOpenTableVenueInput(venueIdOrUrl);
+    if (!/^\d+$/.test(raw)) {
+      const resolved = await resolveOpenTableVenueId(raw);
+      venueId = resolved ?? raw;
+    } else {
+      venueId = raw;
+    }
   }
 
   const { data: restaurant, error } = await db

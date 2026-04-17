@@ -104,28 +104,68 @@ export async function resolveResyVenueId(
     /* raw slug */
   }
 
+  const headers = {
+    Authorization: `ResyAPI api_key="${apiKey}"`,
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36',
+    'X-Origin': 'https://resy.com',
+    Referer: 'https://resy.com/',
+    Accept: 'application/json, text/plain, */*',
+  };
+
+  // 1. Try the venue lookup endpoint directly
   try {
-    // Scrape the Resy venue page and extract the numeric ID from __NEXT_DATA__
-    const pageUrl = `https://resy.com/cities/ny/venues/${encodeURIComponent(slug)}`;
-    const pageRes = await fetch(pageUrl, {
+    const r = await fetch(`https://api.resy.com/3/venue?url_slug=${slug}&location=us-ny`, { headers });
+    if (r.ok) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data = await r.json() as any;
+      const id = data?.id?.resy ?? data?.venue?.id?.resy ?? data?.venue_id;
+      if (id) return String(id);
+    }
+  } catch { /* continue */ }
+
+  // 2. Try the venue search endpoint
+  try {
+    const params = new URLSearchParams({
+      query: slug,
+      'geo[latitude]': '40.7128',
+      'geo[longitude]': '-74.0060',
+      'slot_filter[party_size]': '2',
+      'slot_filter[day]': new Date().toISOString().split('T')[0],
+    });
+    const r = await fetch(`https://api.resy.com/3/venueSearch?${params}`, { headers });
+    if (r.ok) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data = await r.json() as any;
+      const venues = data?.search?.hits ?? data?.hits ?? [];
+      for (const v of venues) {
+        const vSlug = v?.venue?.url_slug ?? v?.url_slug ?? '';
+        const vId = v?.venue?.id?.resy ?? v?.id?.resy ?? v?.venue_id;
+        if (vSlug === slug && vId) return String(vId);
+      }
+      // If only one result, use it
+      if (venues.length === 1) {
+        const vId = venues[0]?.venue?.id?.resy ?? venues[0]?.id?.resy ?? venues[0]?.venue_id;
+        if (vId) return String(vId);
+      }
+    }
+  } catch { /* continue */ }
+
+  // 3. Fall back to page scraping (may be blocked by Imperva)
+  try {
+    const pageRes = await fetch(`https://resy.com/cities/ny/venues/${encodeURIComponent(slug)}`, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36',
         Accept: 'text/html,application/xhtml+xml',
       },
     });
-
     if (pageRes.ok) {
       const html = await pageRes.text();
-      // Resy embeds venue data in __NEXT_DATA__ as JSON
-      const match = html.match(/"id"\s*:\s*\{\s*"resy"\s*:\s*(\d+)/);
-      if (match) return match[1];
-      // Fallback: look for venue_id in the page
-      const match2 = html.match(/"venue_id"\s*:\s*(\d+)/);
-      if (match2) return match2[1];
+      const m1 = html.match(/"id"\s*:\s*\{\s*"resy"\s*:\s*(\d+)/);
+      if (m1) return m1[1];
+      const m2 = html.match(/"venue_id"\s*:\s*(\d+)/);
+      if (m2) return m2[1];
     }
+  } catch { /* give up */ }
 
-    return null;
-  } catch {
-    return null;
-  }
+  return null;
 }
