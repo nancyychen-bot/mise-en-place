@@ -21,6 +21,7 @@ export async function sendNotification(
 
     if (clickUrl) {
       headers['Click'] = clickUrl;
+      headers['Actions'] = `view, Book Now, ${clickUrl}, clear=true`;
     }
 
     const res = await fetch(`https://ntfy.sh/${encodeURIComponent(topic)}`, {
