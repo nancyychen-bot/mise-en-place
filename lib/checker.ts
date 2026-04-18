@@ -1,6 +1,7 @@
 import { db } from './db';
 import { findResyAvailability } from './resy';
 import { findOpenTableAvailability } from './opentable';
+import { findSevenRoomsAvailability } from './sevenrooms';
 import { sendNotification } from './ntfy';
 import {
   isSlotInWindow,
@@ -9,8 +10,6 @@ import {
   getDateRange,
 } from './time-filter';
 import type { CheckResult, Slot } from './types';
-
-const DEDUP_MS = 15 * 60 * 1000;
 
 /**
  * Core check loop for a single user.
@@ -49,20 +48,6 @@ export async function checkUserWatchlist(userId: string): Promise<CheckResult[]>
   if (restErr) throw new Error(`Failed to load restaurants: ${restErr.message}`);
   if (!restaurants?.length) throw new Error(`No active restaurants found on your watchlist.`);
 
-  // Purge stale dedup entries from DB
-  const cutoff = new Date(Date.now() - DEDUP_MS).toISOString();
-  await db.from('notified_slots').delete().eq('user_id', userId).lt('notified_at', cutoff);
-
-  // Load existing dedup entries for this user
-  const { data: existingNotified } = await db
-    .from('notified_slots')
-    .select('restaurant_id, slot_date, slot_time')
-    .eq('user_id', userId);
-
-  const notifiedSet = new Set(
-    (existingNotified ?? []).map((r) => `${r.restaurant_id}:${r.slot_date}:${r.slot_time}`)
-  );
-
   const apiKey: string = process.env.RESY_API_KEY ?? settings.resy_api_key ?? '';
   const dates = getDateRange(settings.day_range, settings.days_of_week);
 
@@ -70,9 +55,12 @@ export async function checkUserWatchlist(userId: string): Promise<CheckResult[]>
   const results = await Promise.all(
     restaurants.map(async (restaurant) => {
       const checkedAt = new Date();
-      const foundSlots: Slot[] = [];
 
       try {
+        // Build dedup set from previously stored slots for this restaurant
+        const prevSlots: Slot[] = restaurant.available_slots ?? [];
+        const prevSlotKeys = new Set(prevSlots.map((s: Slot) => `${s.date}:${s.time}`));
+
         // Check all dates in parallel with a 6s per-call timeout
         const slotsByDate = await Promise.all(
           dates.map(async (date) => {
@@ -86,56 +74,59 @@ export async function checkUserWatchlist(userId: string): Promise<CheckResult[]>
               return withTimeout(findOpenTableAvailability(
                 restaurant.venue_id, date, settings.earliest_time, restaurant.party_size
               )).catch(() => []);
+            } else if (restaurant.platform === 'sevenrooms') {
+              return withTimeout(findSevenRoomsAvailability(
+                restaurant.venue_id, date, restaurant.party_size
+              )).catch(() => []);
             }
             return [];
           })
         );
 
-        const newSlotRows: { user_id: string; restaurant_id: string; slot_date: string; slot_time: string }[] = [];
+        // Collect all in-window slots and find which are new (not previously notified)
+        const allSlotsInWindow: Slot[] = [];
+        const newSlots: Slot[] = [];
 
         for (const slots of slotsByDate) {
-          const inWindow = slots.filter((s: Slot) =>
-            isSlotInWindow(s.time, settings.earliest_time, settings.latest_time)
-          );
-          for (const slot of inWindow) {
-            const key = `${restaurant.id}:${slot.date}:${slot.time}`;
-            if (!notifiedSet.has(key)) {
-              foundSlots.push(slot);
-              notifiedSet.add(key);
-              newSlotRows.push({
-                user_id: userId,
-                restaurant_id: restaurant.id,
-                slot_date: slot.date,
-                slot_time: slot.time,
-              });
+          for (const slot of slots) {
+            if (!isSlotInWindow(slot.time, settings.earliest_time, settings.latest_time)) continue;
+            allSlotsInWindow.push(slot);
+            if (!prevSlotKeys.has(`${slot.date}:${slot.time}`)) {
+              newSlots.push(slot);
             }
           }
         }
 
-        // Persist dedup rows, update restaurant record, and log — all in parallel
+        // Save ALL current slots for display + dedup on next run; log check
         await Promise.all([
-          newSlotRows.length > 0
-            ? db.from('notified_slots').upsert(newSlotRows, { onConflict: 'user_id,restaurant_id,slot_date,slot_time' })
-            : Promise.resolve(),
+          db.from('restaurants').update({
+            last_checked: checkedAt.toISOString(),
+            available_slots: allSlotsInWindow,
+            slots_updated_at: checkedAt.toISOString(),
+          }).eq('id', restaurant.id),
           db.from('activity_log').insert({
             user_id: userId,
             restaurant_id: restaurant.id,
             type: 'check',
-            message: `Checked <strong>${restaurant.name}</strong> — ${foundSlots.length} new slot(s) found`,
+            message: `Checked <strong>${restaurant.name}</strong> — ${allSlotsInWindow.length} slot(s) available, ${newSlots.length} new`,
           }),
-          db.from('restaurants').update({
-            last_checked: checkedAt.toISOString(),
-            available_slots: foundSlots,
-            slots_updated_at: checkedAt.toISOString(),
-          }).eq('id', restaurant.id),
         ]);
 
-        if (foundSlots.length > 0) {
-          const timeList = [...new Set(foundSlots.map((s) => s.displayTime))].join(', ');
-          const dateList = [...new Set(foundSlots.map((s) => s.date))].join(', ');
+        if (newSlots.length > 0) {
+          const timeList = [...new Set(newSlots.map((s) => s.displayTime))].join(', ');
+          const dateList = [...new Set(newSlots.map((s) => s.date))].join(', ');
           const foundMsg = `🍽 <strong>${restaurant.name}</strong> — ${timeList} on ${dateList}`;
 
           const inQuiet = isCurrentTimeInQuietHours(settings.quiet_hours_start, settings.quiet_hours_end, now, tz);
+
+          // Link directly to the first new slot's date/time for instant booking
+          const firstSlot = newSlots[0];
+          const slug = restaurant.venue_slug ?? restaurant.venue_id;
+          const bookingUrl = restaurant.platform === 'resy'
+            ? `https://resy.com/cities/ny/venues/${slug}?date=${firstSlot.date}&seats=${restaurant.party_size}`
+            : restaurant.platform === 'opentable'
+            ? `https://www.opentable.com/r/${slug}?covers=${restaurant.party_size}&dateTime=${firstSlot.date}T${firstSlot.time}:00`
+            : `https://www.sevenrooms.com/reservations/${slug}?date=${firstSlot.date}&party_size=${restaurant.party_size}`;
 
           await Promise.all([
             db.from('activity_log').insert({ user_id: userId, restaurant_id: restaurant.id, type: 'found', message: foundMsg }),
@@ -145,13 +136,13 @@ export async function checkUserWatchlist(userId: string): Promise<CheckResult[]>
                   `Table available at ${restaurant.name}`,
                   `${timeList} on ${dateList} for ${restaurant.party_size} guests`,
                   settings.ntfy_priority,
-                  restaurant.platform === 'resy'
-                    ? `https://resy.com/cities/ny/venues/${restaurant.venue_slug ?? restaurant.venue_id}`
-                    : `https://www.opentable.com/r/${restaurant.venue_slug ?? restaurant.venue_id}`
+                  bookingUrl,
                 ).then(() => db.from('activity_log').insert({ user_id: userId, restaurant_id: restaurant.id, type: 'notify', message: `Notification sent for <strong>${restaurant.name}</strong>` }))
               : Promise.resolve(),
           ]);
         }
+
+        return { restaurantId: restaurant.id, restaurantName: restaurant.name, platform: restaurant.platform, slots: allSlotsInWindow, checkedAt };
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         console.error(`[checker] error for restaurant ${restaurant.id}:`, msg);
@@ -159,9 +150,8 @@ export async function checkUserWatchlist(userId: string): Promise<CheckResult[]>
           user_id: userId, restaurant_id: restaurant.id, type: 'system',
           message: `Error checking <strong>${restaurant.name}</strong>: ${msg}`,
         });
+        return { restaurantId: restaurant.id, restaurantName: restaurant.name, platform: restaurant.platform, slots: [], checkedAt };
       }
-
-      return { restaurantId: restaurant.id, restaurantName: restaurant.name, platform: restaurant.platform, slots: foundSlots, checkedAt };
     })
   );
 

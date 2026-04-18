@@ -15,6 +15,7 @@ const SUGGESTIONS: Suggestion[] = [
   { name: "Don Angie", platform: "resy", venueIdOrUrl: "https://resy.com/cities/ny/venues/don-angie", partySize: 2 },
   { name: "Via Carota", platform: "resy", venueIdOrUrl: "https://resy.com/cities/ny/venues/via-carota", partySize: 2 },
   { name: "Le Bernardin", platform: "resy", venueIdOrUrl: "https://resy.com/cities/ny/venues/le-bernardin", partySize: 2 },
+  { name: "Carbone", platform: "sevenrooms", venueIdOrUrl: "https://www.sevenrooms.com/reservations/carbonenewyork", partySize: 2 },
 ];
 
 interface AddRestaurantFormProps {
@@ -184,6 +185,7 @@ export default function AddRestaurantForm({ onAdd, onCheckNow, checking, checkMs
                 >
                   <option value="resy">Resy</option>
                   <option value="opentable">OpenTable</option>
+                  <option value="sevenrooms">SevenRooms</option>
                 </select>
               </div>
 
@@ -198,13 +200,20 @@ export default function AddRestaurantForm({ onAdd, onCheckNow, checking, checkMs
                   className="form-input"
                   value={venueIdOrUrl}
                   onChange={(e) => setVenueIdOrUrl(e.target.value)}
-                  placeholder={platform === 'opentable' ? 'Numeric RID (e.g. 55048)' : 'resy.com/cities/ny/… or venue ID'}
+                  placeholder={
+                    platform === 'opentable'
+                      ? 'Numeric RID (e.g. 55048)'
+                      : platform === 'sevenrooms'
+                      ? 'sevenrooms.com/reservations/… or slug'
+                      : 'resy.com/cities/ny/… or venue ID'
+                  }
                 />
                 <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
                   {platform === 'opentable'
                     ? <>Due to OpenTable&apos;s system, you have to enter the numeric ID directly. To find it: open the restaurant page, right-click and open &ldquo;View Page Source&rdquo;, then CTRL-F search for &ldquo;rid&rdquo; and copy and paste that numeric ID. I know it&apos;s annoying, but blame OpenTable!</>
-                    : <>Paste the full URL &mdash; we&apos;ll extract the ID automatically.</>
-                  }
+                    : platform === 'sevenrooms'
+                    ? <>Paste the full SevenRooms URL &mdash; we&apos;ll extract the venue slug automatically.</>
+                    : <>Paste the full URL &mdash; we&apos;ll extract the ID automatically.</>}
                 </p>
               </div>
 

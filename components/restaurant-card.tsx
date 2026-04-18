@@ -13,15 +13,20 @@ interface RestaurantCardProps {
 }
 
 function getBookingUrl(restaurant: Restaurant, slot?: Slot): string {
+  const slug = restaurant.venueSlug ?? restaurant.venueId;
   if (restaurant.platform === 'resy') {
-    const slug = restaurant.venueSlug ?? restaurant.venueId;
     const base = `https://resy.com/cities/ny/venues/${slug}`;
     return slot ? `${base}?date=${slot.date}&seats=${restaurant.partySize}` : base;
-  } else {
-    const slug = restaurant.venueSlug ?? restaurant.venueId;
+  } else if (restaurant.platform === 'opentable') {
     const base = `https://www.opentable.com/r/${slug}`;
     return slot
       ? `${base}?covers=${restaurant.partySize}&dateTime=${slot.date}T${slot.time}:00`
+      : base;
+  } else {
+    // sevenrooms
+    const base = `https://www.sevenrooms.com/reservations/${slug}`;
+    return slot
+      ? `${base}?date=${slot.date}&party_size=${restaurant.partySize}`
       : base;
   }
 }
@@ -50,7 +55,7 @@ export default function RestaurantCard({
   const [idInput, setIdInput] = useState('');
   const [idError, setIdError] = useState('');
   const hasSlots = slots.length > 0;
-  const needsId = !/^\d+$/.test(restaurant.venueId);
+  const needsId = restaurant.platform === 'opentable' && !/^\d+$/.test(restaurant.venueId);
 
   async function handleToggle() {
     setToggling(true);
