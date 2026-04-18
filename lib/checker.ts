@@ -97,20 +97,23 @@ export async function checkUserWatchlist(userId: string): Promise<CheckResult[]>
           }
         }
 
-        // Save ALL current slots for display + dedup on next run; log check
-        await Promise.all([
-          db.from('restaurants').update({
-            last_checked: checkedAt.toISOString(),
-            available_slots: allSlotsInWindow,
-            slots_updated_at: checkedAt.toISOString(),
-          }).eq('id', restaurant.id),
-          db.from('activity_log').insert({
-            user_id: userId,
-            restaurant_id: restaurant.id,
-            type: 'check',
-            message: `Checked <strong>${restaurant.name}</strong> — ${allSlotsInWindow.length} slot(s) available, ${newSlots.length} new`,
-          }),
-        ]);
+        // Save ALL current slots for display + dedup on next run
+        const { error: updateErr } = await db.from('restaurants').update({
+          last_checked: checkedAt.toISOString(),
+          available_slots: allSlotsInWindow,
+          slots_updated_at: checkedAt.toISOString(),
+        }).eq('id', restaurant.id);
+
+        if (updateErr) {
+          console.error(`[checker] failed to save available_slots for ${restaurant.id}:`, updateErr.message);
+        }
+
+        await db.from('activity_log').insert({
+          user_id: userId,
+          restaurant_id: restaurant.id,
+          type: 'check',
+          message: `Checked <strong>${restaurant.name}</strong> — ${allSlotsInWindow.length} slot(s) available, ${newSlots.length} new (prev: ${prevSlots.length})`,
+        });
 
         if (newSlots.length > 0) {
           const timeList = [...new Set(newSlots.map((s) => s.displayTime))].join(', ');
