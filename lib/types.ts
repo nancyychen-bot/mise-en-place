@@ -24,7 +24,6 @@ export interface UserSettings {
   activeHoursEnd: string;
   quietHoursStart: string;
   quietHoursEnd: string;
-  emailNotificationsEnabled: boolean;
 }
 
 export interface Restaurant {
