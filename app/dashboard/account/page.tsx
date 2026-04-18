@@ -13,6 +13,7 @@ interface AccountData {
   ntfyPriority: NtfyPriority;
   monitoringEnabled: boolean;
   timezone: string;
+  emailNotifyEnabled: boolean;
 }
 
 const sectionStyle: React.CSSProperties = {
@@ -36,6 +37,7 @@ export default function AccountPage() {
     ntfyPriority: 'default',
     monitoringEnabled: true,
     timezone: 'America/New_York',
+    emailNotifyEnabled: false,
   });
 
   const [saving, setSaving] = useState(false);
@@ -64,6 +66,7 @@ export default function AccountPage() {
       ntfyPriority: data.ntfyPriority,
       monitoringEnabled: data.monitoringEnabled,
       timezone: data.timezone,
+      emailNotifyEnabled: data.emailNotifyEnabled,
     };
 
     try {
@@ -176,6 +179,16 @@ export default function AccountPage() {
               <option value="high">High — urgent alert</option>
               <option value="max">Max — maximum urgency</option>
             </select>
+          </FieldRow>
+          <FieldRow
+            label="Email Notifications"
+            description={`Send an email to ${data.email || 'your account email'} when a slot is found.`}
+          >
+            <Toggle
+              checked={data.emailNotifyEnabled}
+              onChange={(checked) => setData((d) => ({ ...d, emailNotifyEnabled: checked }))}
+              label="email notifications"
+            />
           </FieldRow>
           <FieldRow label="Test Notification" description="Send a test to verify your setup works.">
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>

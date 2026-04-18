@@ -4,6 +4,7 @@ import { findOpenTableAvailability } from './opentable';
 import { findSevenRoomsAvailability } from './sevenrooms';
 import { findTockAvailability } from './tock';
 import { sendNotification } from './ntfy';
+import { sendEmailNotification } from './email';
 import {
   isSlotInWindow,
   isCurrentTimeInActiveHours,
@@ -19,12 +20,11 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * Loads their settings + active restaurants, checks each one, fires notifications.
  */
 export async function checkUserWatchlist(userId: string): Promise<CheckResult[]> {
-  // Load settings
-  const { data: settings, error: settingsErr } = await db
-    .from('user_settings')
-    .select('*')
-    .eq('user_id', userId)
-    .single();
+  // Load settings and user email (for email notifications)
+  const [{ data: settings, error: settingsErr }, { data: userRow }] = await Promise.all([
+    db.from('user_settings').select('*').eq('user_id', userId).single(),
+    db.from('users').select('email').eq('id', userId).single(),
+  ]);
 
   if (settingsErr || !settings) {
     throw new Error(`No settings found for user. Please save your account settings first.`);
@@ -149,18 +149,38 @@ export async function checkUserWatchlist(userId: string): Promise<CheckResult[]>
             ? `https://www.sevenrooms.com/reservations/${slug}?date=${firstSlot.date}&party_size=${primarySize}`
             : `https://www.exploretock.com/${slug}?date=${firstSlot.date}&size=${primarySize}&time=${firstSlot.time}`;
 
-          await Promise.all([
+          const notifyPromises: PromiseLike<unknown>[] = [
             db.from('activity_log').insert({ user_id: userId, restaurant_id: restaurant.id, type: 'found', message: foundMsg }),
-            !inQuiet && settings.ntfy_topic
-              ? sendNotification(
+          ];
+
+          if (!inQuiet) {
+            if (settings.ntfy_topic) {
+              notifyPromises.push(
+                sendNotification(
                   settings.ntfy_topic,
                   `Table available at ${restaurant.name}`,
                   `${timeList} on ${dateList} for ${restaurant.party_size} guests`,
                   settings.ntfy_priority,
                   bookingUrl,
                 ).then(() => db.from('activity_log').insert({ user_id: userId, restaurant_id: restaurant.id, type: 'notify', message: `Notification sent for <strong>${restaurant.name}</strong>` }))
-              : Promise.resolve(),
-          ]);
+              );
+            }
+
+            if (settings.email_notify_enabled && userRow?.email) {
+              notifyPromises.push(
+                sendEmailNotification(
+                  userRow.email,
+                  restaurant.name,
+                  timeList,
+                  dateList,
+                  sizes[0],
+                  bookingUrl,
+                ).then(() => db.from('activity_log').insert({ user_id: userId, restaurant_id: restaurant.id, type: 'notify', message: `Email notification sent for <strong>${restaurant.name}</strong>` }))
+              );
+            }
+          }
+
+          await Promise.all(notifyPromises);
         }
 
         return { restaurantId: restaurant.id, restaurantName: restaurant.name, platform: restaurant.platform, slots: allSlotsInWindow, checkedAt };

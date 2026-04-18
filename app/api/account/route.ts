@@ -17,7 +17,7 @@ export async function GET() {
 
   const { data: settings } = await db
     .from('user_settings')
-    .select('ntfy_topic, ntfy_priority, monitoring_enabled, timezone')
+    .select('ntfy_topic, ntfy_priority, monitoring_enabled, timezone, email_notify_enabled')
     .eq('user_id', user.id)
     .single();
 
@@ -28,6 +28,7 @@ export async function GET() {
     ntfyPriority: settings?.ntfy_priority ?? 'default',
     monitoringEnabled: settings?.monitoring_enabled ?? true,
     timezone: settings?.timezone ?? 'America/New_York',
+    emailNotifyEnabled: settings?.email_notify_enabled ?? false,
   });
 }
 
@@ -38,6 +39,7 @@ const PatchSchema = z.object({
   ntfyPriority: z.enum(['min', 'low', 'default', 'high', 'max']).optional(),
   monitoringEnabled: z.boolean().optional(),
   timezone: z.string().max(50).optional(),
+  emailNotifyEnabled: z.boolean().optional(),
 });
 
 export async function PATCH(req: NextRequest) {
@@ -83,6 +85,7 @@ export async function PATCH(req: NextRequest) {
   if (d.ntfyPriority !== undefined) settingsUpdate.ntfy_priority = d.ntfyPriority;
   if (d.monitoringEnabled !== undefined) settingsUpdate.monitoring_enabled = d.monitoringEnabled;
   if (d.timezone !== undefined) settingsUpdate.timezone = d.timezone;
+  if (d.emailNotifyEnabled !== undefined) settingsUpdate.email_notify_enabled = d.emailNotifyEnabled;
 
   if (Object.keys(settingsUpdate).length > 1) {
     await db.from('user_settings').update(settingsUpdate).eq('user_id', user.id);
