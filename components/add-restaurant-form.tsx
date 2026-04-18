@@ -143,7 +143,7 @@ export default function AddRestaurantForm({ onAdd, onCheckNow, checking, checkMs
             Add a Restaurant
           </p>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '24px' }}>
-            Paste a Resy or OpenTable URL, or enter the venue ID directly.
+            Paste a Resy, OpenTable, SevenRooms, or Tock URL and we&apos;ll extract the venue automatically.
           </p>
 
           <form onSubmit={handleSubmit}>
