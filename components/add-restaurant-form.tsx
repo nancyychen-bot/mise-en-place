@@ -15,7 +15,12 @@ const SUGGESTIONS: Suggestion[] = [
   { name: "Four Horsemen", platform: "resy", venueIdOrUrl: "https://resy.com/cities/ny/venues/four-horsemen", partySize: 2 },
   { name: "Theodora", platform: "resy", venueIdOrUrl: "https://resy.com/cities/ny/venues/theodora", partySize: 2 },
   { name: "Atomix", platform: "resy", venueIdOrUrl: "https://resy.com/cities/ny/venues/atomix", partySize: 2 },
-  { name: "Carbone", platform: "sevenrooms", venueIdOrUrl: "https://www.sevenrooms.com/reservations/carbonenewyork", partySize: 2 },
+  { name: "Bistrot Ha", platform: "resy", venueIdOrUrl: "https://resy.com/cities/ny/venues/bistrot-ha", partySize: 2 },
+  { name: "I Cavallini", platform: "resy", venueIdOrUrl: "https://resy.com/cities/ny/venues/i-cavallini", partySize: 2 },
+  { name: "Le Veau d'Or", platform: "opentable", venueIdOrUrl: "220387", partySize: 2 },
+  { name: "Bridges", platform: "resy", venueIdOrUrl: "https://resy.com/cities/ny/venues/bridges", partySize: 2 },
+  { name: "Sunn's", platform: "opentable", venueIdOrUrl: "1428529", partySize: 2 },
+  { name: "Semma", platform: "sevenrooms", venueIdOrUrl: "https://www.sevenrooms.com/explore/semma", partySize: 2 },
 ];
 
 interface AddRestaurantFormProps {
