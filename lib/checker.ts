@@ -12,6 +12,7 @@ import {
 } from './time-filter';
 import type { CheckResult, Slot } from './types';
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
  * Core check loop for a single user.
@@ -56,9 +57,11 @@ export async function checkUserWatchlist(userId: string): Promise<CheckResult[]>
   const withTimeout = <T>(p: Promise<T>): Promise<T> =>
     Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error('timeout')), 6000))]);
 
-  const results: CheckResult[] = await Promise.all(
-    restaurants.map(async (restaurant) => {
-      const checkedAt = new Date();
+  const results: CheckResult[] = [];
+  for (const restaurant of restaurants) {
+    await sleep(300);
+    const checkedAt = new Date();
+    results.push(await (async () => {
       try {
         // Build dedup set from previously stored slots for this restaurant
         const prevSlots: Slot[] = restaurant.available_slots ?? [];
@@ -171,8 +174,8 @@ export async function checkUserWatchlist(userId: string): Promise<CheckResult[]>
         });
         return { restaurantId: restaurant.id, restaurantName: restaurant.name, platform: restaurant.platform, slots: [], checkedAt };
       }
-    })
-  );
+    })());
+  }
 
   return results;
 }
