@@ -201,7 +201,10 @@ export default function AddRestaurantForm({ onAdd, onCheckNow, checking, checkMs
                   placeholder="resy.com/cities/ny/… or venue ID"
                 />
                 <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                  Paste the full URL &mdash; we&apos;ll extract the ID automatically
+                  {platform === 'opentable'
+                    ? <>On OpenTable, click <strong>Reserve</strong> then copy that URL &mdash; it contains the numeric ID.</>
+                    : <>Paste the full URL &mdash; we&apos;ll extract the ID automatically.</>
+                  }
                 </p>
               </div>
 

@@ -46,12 +46,16 @@ export function parseOpenTableVenueInput(input: string): string {
   try {
     const url = new URL(trimmed);
     if (url.hostname.includes('opentable.com')) {
-      // Strip leading /r/ or / to get the slug
+      // Booking/reservation URLs contain ?rid=12345 — extract it directly
+      const rid = url.searchParams.get('rid') ?? url.searchParams.get('restref');
+      if (rid && /^\d+$/.test(rid)) return rid;
+
+      // Restaurant page URL — extract slug
       const slug = url.pathname.replace(/^\/(r\/)?/, '').replace(/\/$/, '');
       if (slug) return slug;
     }
   } catch {
-    // Raw slug
+    // Raw slug or ID
   }
 
   return trimmed;
