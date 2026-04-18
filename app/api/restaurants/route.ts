@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireUser } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { parseResyVenueInput, parseOpenTableVenueInput, parseSevenRoomsVenueInput } from '@/lib/venue-parser';
+import { parseResyVenueInput, parseOpenTableVenueInput, parseSevenRoomsVenueInput, parseTockVenueInput } from '@/lib/venue-parser';
 import { resolveResyVenueId } from '@/lib/resy';
 import { resolveOpenTableVenueId } from '@/lib/opentable';
 
@@ -23,7 +23,7 @@ export async function GET() {
 
 const CreateSchema = z.object({
   name: z.string().min(1).max(200),
-  platform: z.enum(['resy', 'opentable', 'sevenrooms']),
+  platform: z.enum(['resy', 'opentable', 'sevenrooms', 'tock']),
   venueIdOrUrl: z.string().min(1),
   partySize: z.number().int().min(1).max(20).default(2),
 });
@@ -74,9 +74,13 @@ export async function POST(req: NextRequest) {
     } else {
       venueId = raw;
     }
-  } else {
-    // sevenrooms — slug-based, no numeric ID needed
+  } else if (platform === 'sevenrooms') {
     const raw = parseSevenRoomsVenueInput(venueIdOrUrl);
+    venueSlug = raw;
+    venueId = raw;
+  } else {
+    // tock — slug-based, no numeric ID needed
+    const raw = parseTockVenueInput(venueIdOrUrl);
     venueSlug = raw;
     venueId = raw;
   }

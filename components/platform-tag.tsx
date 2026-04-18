@@ -16,12 +16,12 @@ export default function PlatformTag({ platform }: PlatformTagProps) {
         letterSpacing: '0.14em',
         textTransform: 'uppercase',
         color: 'var(--bg)',
-        background: platform === 'resy' ? 'var(--tag-red)' : platform === 'opentable' ? 'var(--tag-blue)' : 'var(--tag-orange)',
+        background: platform === 'resy' ? 'var(--tag-red)' : platform === 'opentable' ? 'var(--tag-blue)' : platform === 'sevenrooms' ? 'var(--tag-orange)' : 'var(--tag-cyan)',
         alignSelf: 'flex-start',
         marginBottom: '16px',
       }}
     >
-      {platform === 'resy' ? 'Resy' : platform === 'opentable' ? 'OpenTable' : 'SevenRooms'}
+      {platform === 'resy' ? 'Resy' : platform === 'opentable' ? 'OpenTable' : platform === 'sevenrooms' ? 'SevenRooms' : 'Tock'}
     </span>
   );
 }

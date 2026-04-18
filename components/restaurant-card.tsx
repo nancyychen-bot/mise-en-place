@@ -22,11 +22,16 @@ function getBookingUrl(restaurant: Restaurant, slot?: Slot): string {
     return slot
       ? `${base}?covers=${restaurant.partySize}&dateTime=${slot.date}T${slot.time}:00`
       : base;
-  } else {
-    // sevenrooms
+  } else if (restaurant.platform === 'sevenrooms') {
     const base = `https://www.sevenrooms.com/reservations/${slug}`;
     return slot
       ? `${base}?date=${slot.date}&party_size=${restaurant.partySize}`
+      : base;
+  } else {
+    // tock
+    const base = `https://www.exploretock.com/${slug}`;
+    return slot
+      ? `${base}?date=${slot.date}&size=${restaurant.partySize}&time=${slot.time}`
       : base;
   }
 }

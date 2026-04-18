@@ -2,6 +2,7 @@ import { db } from './db';
 import { findResyAvailability } from './resy';
 import { findOpenTableAvailability } from './opentable';
 import { findSevenRoomsAvailability } from './sevenrooms';
+import { findTockAvailability } from './tock';
 import { sendNotification } from './ntfy';
 import {
   isSlotInWindow,
@@ -78,6 +79,10 @@ export async function checkUserWatchlist(userId: string): Promise<CheckResult[]>
               return withTimeout(findSevenRoomsAvailability(
                 restaurant.venue_id, date, restaurant.party_size
               )).catch(() => []);
+            } else if (restaurant.platform === 'tock') {
+              return withTimeout(findTockAvailability(
+                restaurant.venue_id, date, settings.earliest_time, restaurant.party_size
+              )).catch(() => []);
             }
             return [];
           })
@@ -129,7 +134,9 @@ export async function checkUserWatchlist(userId: string): Promise<CheckResult[]>
             ? `https://resy.com/cities/ny/venues/${slug}?date=${firstSlot.date}&seats=${restaurant.party_size}`
             : restaurant.platform === 'opentable'
             ? `https://www.opentable.com/r/${slug}?covers=${restaurant.party_size}&dateTime=${firstSlot.date}T${firstSlot.time}:00`
-            : `https://www.sevenrooms.com/reservations/${slug}?date=${firstSlot.date}&party_size=${restaurant.party_size}`;
+            : restaurant.platform === 'sevenrooms'
+            ? `https://www.sevenrooms.com/reservations/${slug}?date=${firstSlot.date}&party_size=${restaurant.party_size}`
+            : `https://www.exploretock.com/${slug}?date=${firstSlot.date}&size=${restaurant.party_size}&time=${firstSlot.time}`;
 
           await Promise.all([
             db.from('activity_log').insert({ user_id: userId, restaurant_id: restaurant.id, type: 'found', message: foundMsg }),

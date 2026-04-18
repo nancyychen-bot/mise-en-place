@@ -1,4 +1,4 @@
-export type Platform = 'resy' | 'opentable' | 'sevenrooms';
+export type Platform = 'resy' | 'opentable' | 'sevenrooms' | 'tock';
 export type LogType = 'check' | 'found' | 'notify' | 'system';
 export type NtfyPriority = 'min' | 'low' | 'default' | 'high' | 'max';
 export type DaysOfWeek = 'all' | 'weekdays' | 'weekends' | 'sat' | 'fri-sun';
