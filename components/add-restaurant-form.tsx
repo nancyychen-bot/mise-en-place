@@ -198,7 +198,7 @@ export default function AddRestaurantForm({ onAdd, onCheckNow, checking, checkMs
                   className="form-input"
                   value={venueIdOrUrl}
                   onChange={(e) => setVenueIdOrUrl(e.target.value)}
-                  placeholder="resy.com/cities/ny/… or venue ID"
+                  placeholder={platform === 'opentable' ? 'Numeric RID (e.g. 55048)' : 'resy.com/cities/ny/… or venue ID'}
                 />
                 <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
                   {platform === 'opentable'
