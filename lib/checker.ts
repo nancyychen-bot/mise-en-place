@@ -18,7 +18,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * Core check loop for a single user.
  * Loads their settings + active restaurants, checks each one, fires notifications.
  */
-export async function checkUserWatchlist(userId: string): Promise<CheckResult[]> {
+export async function checkUserWatchlist(userId: string, force = false): Promise<CheckResult[]> {
   // Load settings
   const { data: settings, error: settingsErr } = await db
     .from('user_settings')
@@ -37,7 +37,7 @@ export async function checkUserWatchlist(userId: string): Promise<CheckResult[]>
   const now = new Date();
   const currentTime = now.toUTCString();
   const tz: string = settings.timezone ?? 'America/New_York';
-  if (!isCurrentTimeInActiveHours(settings.active_hours_start, settings.active_hours_end, now, tz)) {
+  if (!force && !isCurrentTimeInActiveHours(settings.active_hours_start, settings.active_hours_end, now, tz)) {
     throw new Error(`Outside active hours (${settings.active_hours_start}–${settings.active_hours_end}). Current server time: ${currentTime}`);
   }
 

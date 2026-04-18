@@ -17,7 +17,7 @@ export async function POST() {
   lastRun.set(user.id, Date.now());
 
   try {
-    const results = await checkUserWatchlist(user.id);
+    const results = await checkUserWatchlist(user.id, true);
     return NextResponse.json(results);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
