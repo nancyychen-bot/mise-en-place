@@ -202,7 +202,7 @@ export default function AddRestaurantForm({ onAdd, onCheckNow, checking, checkMs
                 />
                 <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
                   {platform === 'opentable'
-                    ? <>Enter the numeric RID directly. To find it: open the restaurant page, press <strong>Cmd+U</strong> (View Source), then search for <strong>&ldquo;rid&rdquo;</strong>.</>
+                    ? <>Due to OpenTable&apos;s system, you have to enter the numeric ID directly. To find it: open the restaurant page, right-click and open &ldquo;View Page Source&rdquo;, then CTRL-F search for &ldquo;rid&rdquo; and copy and paste that numeric ID. I know it&apos;s annoying, but blame OpenTable!</>
                     : <>Paste the full URL &mdash; we&apos;ll extract the ID automatically.</>
                   }
                 </p>
