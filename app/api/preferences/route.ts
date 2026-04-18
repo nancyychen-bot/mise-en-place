@@ -39,7 +39,7 @@ const PatchSchema = z.object({
   latestTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
   dayRange: z.number().int().min(1).max(60).optional(),
   daysOfWeek: z.enum(['all', 'weekdays', 'weekends', 'sat', 'fri-sun']).optional(),
-  checkIntervalMin: z.number().int().min(1).max(60).optional(),
+  checkIntervalMin: z.number().int().min(5).max(60).optional(),
   activeHoursStart: z.string().regex(/^\d{2}:\d{2}$/).optional(),
   activeHoursEnd: z.string().regex(/^\d{2}:\d{2}$/).optional(),
   quietHoursStart: z.string().regex(/^\d{2}:\d{2}$/).optional(),

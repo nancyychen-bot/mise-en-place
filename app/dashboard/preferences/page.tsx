@@ -175,8 +175,8 @@ export default function PreferencesPage() {
               value={prefs.checkIntervalMin}
               onChange={(e) => update('checkIntervalMin', Number(e.target.value))}
             >
-              {[1, 2, 5, 10, 15, 30, 60].map((n) => (
-                <option key={n} value={n}>{n} minute{n !== 1 ? 's' : ''}</option>
+              {[5, 10, 15, 30, 60].map((n) => (
+                <option key={n} value={n}>{n} minutes</option>
               ))}
             </select>
           </div>
