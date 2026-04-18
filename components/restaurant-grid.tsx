@@ -9,6 +9,7 @@ interface RestaurantGridProps {
   onToggle: (id: string, active: boolean) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onVenueIdFixed?: (id: string, newVenueId: string) => void;
+  onUpdate?: (id: string, updates: Partial<Restaurant>) => void;
 }
 
 export default function RestaurantGrid({
@@ -17,6 +18,7 @@ export default function RestaurantGrid({
   onToggle,
   onDelete,
   onVenueIdFixed,
+  onUpdate,
 }: RestaurantGridProps) {
   return (
     <div
@@ -35,6 +37,7 @@ export default function RestaurantGrid({
           onToggle={onToggle}
           onDelete={onDelete}
           onVenueIdFixed={onVenueIdFixed}
+          onUpdate={onUpdate}
         />
       ))}
     </div>

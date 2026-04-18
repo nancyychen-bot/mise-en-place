@@ -33,7 +33,9 @@ export interface Restaurant {
   platform: Platform;
   venueId: string;
   venueSlug: string | null;
-  partySize: number;
+  venueCity: string | null;   // Resy city slug e.g. 'ny', 'chi', 'la'
+  partySize: number;          // legacy single size
+  partySizes: number[] | null; // multi-size override; falls back to [partySize]
   active: boolean;
   lastChecked: Date | null;
   createdAt: Date;

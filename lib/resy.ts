@@ -89,7 +89,8 @@ export async function findResyAvailability(
  */
 export async function resolveResyVenueId(
   slugOrUrl: string,
-  apiKey: string
+  apiKey: string,
+  city: string = 'ny'
 ): Promise<string | null> {
   // If it's already numeric, return as-is
   if (/^\d+$/.test(slugOrUrl.trim())) return slugOrUrl.trim();
@@ -114,7 +115,7 @@ export async function resolveResyVenueId(
 
   // 1. Try the venue lookup endpoint directly
   try {
-    const r = await fetch(`https://api.resy.com/3/venue?url_slug=${slug}&location=ny`, { headers });
+    const r = await fetch(`https://api.resy.com/3/venue?url_slug=${slug}&location=${city}`, { headers });
     if (r.ok) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data = await r.json() as any;

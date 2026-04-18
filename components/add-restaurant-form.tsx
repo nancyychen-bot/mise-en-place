@@ -8,19 +8,19 @@ interface Suggestion {
   name: string;
   platform: Platform;
   venueIdOrUrl: string;
-  partySize: number;
+  partySizes: number[];
 }
 
 const SUGGESTIONS: Suggestion[] = [
-  { name: "Four Horsemen", platform: "resy", venueIdOrUrl: "https://resy.com/cities/ny/venues/four-horsemen", partySize: 2 },
-  { name: "Theodora", platform: "resy", venueIdOrUrl: "https://resy.com/cities/ny/venues/theodora", partySize: 2 },
-  { name: "Atomix", platform: "resy", venueIdOrUrl: "https://resy.com/cities/ny/venues/atomix", partySize: 2 },
-  { name: "Bistrot Ha", platform: "resy", venueIdOrUrl: "https://resy.com/cities/ny/venues/bistrot-ha", partySize: 2 },
-  { name: "I Cavallini", platform: "resy", venueIdOrUrl: "https://resy.com/cities/ny/venues/i-cavallini", partySize: 2 },
-  { name: "Le Veau d'Or", platform: "opentable", venueIdOrUrl: "220387", partySize: 2 },
-  { name: "Bridges", platform: "resy", venueIdOrUrl: "https://resy.com/cities/ny/venues/bridges", partySize: 2 },
-  { name: "Sunn's", platform: "opentable", venueIdOrUrl: "1428529", partySize: 2 },
-  { name: "Semma", platform: "sevenrooms", venueIdOrUrl: "https://www.sevenrooms.com/explore/semma", partySize: 2 },
+  { name: "Four Horsemen", platform: "resy", venueIdOrUrl: "https://resy.com/cities/ny/venues/four-horsemen", partySizes: [2] },
+  { name: "Theodora", platform: "resy", venueIdOrUrl: "https://resy.com/cities/ny/venues/theodora", partySizes: [2] },
+  { name: "Atomix", platform: "resy", venueIdOrUrl: "https://resy.com/cities/ny/venues/atomix", partySizes: [2] },
+  { name: "Bistrot Ha", platform: "resy", venueIdOrUrl: "https://resy.com/cities/ny/venues/bistrot-ha", partySizes: [2] },
+  { name: "I Cavallini", platform: "resy", venueIdOrUrl: "https://resy.com/cities/ny/venues/i-cavallini", partySizes: [2] },
+  { name: "Le Veau d'Or", platform: "opentable", venueIdOrUrl: "220387", partySizes: [2] },
+  { name: "Bridges", platform: "resy", venueIdOrUrl: "https://resy.com/cities/ny/venues/bridges", partySizes: [2] },
+  { name: "Sunn's", platform: "opentable", venueIdOrUrl: "1428529", partySizes: [2] },
+  { name: "Semma", platform: "sevenrooms", venueIdOrUrl: "https://www.sevenrooms.com/explore/semma", partySizes: [2] },
 ];
 
 interface AddRestaurantFormProps {
@@ -35,16 +35,22 @@ export default function AddRestaurantForm({ onAdd, onCheckNow, checking, checkMs
   const [name, setName] = useState('');
   const [platform, setPlatform] = useState<Platform>('resy');
   const [venueIdOrUrl, setVenueIdOrUrl] = useState('');
-  const [partySize, setPartySize] = useState(2);
+  const [partySizes, setPartySizes] = useState<number[]>([2]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  function togglePartySize(n: number) {
+    setPartySizes((prev) =>
+      prev.includes(n) ? (prev.length > 1 ? prev.filter((s) => s !== n) : prev) : [...prev, n].sort((a, b) => a - b)
+    );
+  }
 
   function prefill(s: Suggestion) {
     setOpen(true);
     setName(s.name);
     setPlatform(s.platform);
     setVenueIdOrUrl(s.venueIdOrUrl);
-    setPartySize(s.partySize);
+    setPartySizes(s.partySizes);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -56,7 +62,7 @@ export default function AddRestaurantForm({ onAdd, onCheckNow, checking, checkMs
       const res = await fetch('/api/restaurants', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, platform, venueIdOrUrl, partySize }),
+        body: JSON.stringify({ name, platform, venueIdOrUrl, partySizes }),
       });
 
       const data = await res.json();
@@ -70,7 +76,7 @@ export default function AddRestaurantForm({ onAdd, onCheckNow, checking, checkMs
       setName('');
       setVenueIdOrUrl('');
       setPlatform('resy');
-      setPartySize(2);
+      setPartySizes([2]);
     } catch {
       setError('Something went wrong. Please try again.');
     } finally {
@@ -228,21 +234,28 @@ export default function AddRestaurantForm({ onAdd, onCheckNow, checking, checkMs
               </div>
 
               <div>
-                <label htmlFor="r-party" style={labelStyle}>
-                  Party Size
-                </label>
-                <select
-                  id="r-party"
-                  className="form-select"
-                  value={partySize}
-                  onChange={(e) => setPartySize(Number(e.target.value))}
-                >
+                <label style={labelStyle}>Party Size</label>
+                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                   {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-                    <option key={n} value={n}>
-                      {n} {n === 1 ? 'guest' : 'guests'}
-                    </option>
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => togglePartySize(n)}
+                      style={{
+                        width: '36px', height: '36px', fontSize: '13px', fontWeight: 600,
+                        border: '1px solid var(--border)',
+                        background: partySizes.includes(n) ? 'var(--text)' : 'var(--bg)',
+                        color: partySizes.includes(n) ? 'var(--bg)' : 'var(--text)',
+                        cursor: 'pointer', fontFamily: 'var(--font-family-sans)',
+                      }}
+                    >
+                      {n}
+                    </button>
                   ))}
-                </select>
+                </div>
+                <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  Select all sizes you want to monitor
+                </p>
               </div>
             </div>
 

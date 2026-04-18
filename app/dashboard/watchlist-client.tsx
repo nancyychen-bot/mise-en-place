@@ -26,7 +26,9 @@ function normalizeRestaurant(r: any): Restaurant {
     platform: r.platform,
     venueId: r.venue_id,
     venueSlug: r.venue_slug ?? null,
+    venueCity: r.venue_city ?? null,
     partySize: r.party_size,
+    partySizes: Array.isArray(r.party_sizes) && r.party_sizes.length > 0 ? r.party_sizes : null,
     active: r.active,
     lastChecked: r.last_checked ? new Date(r.last_checked) : null,
     createdAt: new Date(r.created_at),
@@ -71,6 +73,12 @@ export default function WatchlistClient({
   function handleVenueIdFixed(id: string, newVenueId: string) {
     setRestaurants((prev) =>
       prev.map((r) => (r.id === id ? { ...r, venueId: newVenueId } : r))
+    );
+  }
+
+  function handleUpdate(id: string, updates: Partial<Restaurant>) {
+    setRestaurants((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, ...updates } : r))
     );
   }
 
@@ -176,6 +184,7 @@ export default function WatchlistClient({
           onToggle={handleToggle}
           onDelete={handleDelete}
           onVenueIdFixed={handleVenueIdFixed}
+          onUpdate={handleUpdate}
         />
       )}
     </div>

@@ -25,7 +25,7 @@ const CreateSchema = z.object({
   name: z.string().min(1).max(200),
   platform: z.enum(['resy', 'opentable', 'sevenrooms', 'tock']),
   venueIdOrUrl: z.string().min(1),
-  partySize: z.number().int().min(1).max(20).default(2),
+  partySizes: z.array(z.number().int().min(1).max(20)).min(1).default([2]),
 });
 
 export async function POST(req: NextRequest) {
@@ -44,18 +44,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 422 });
   }
 
-  const { name, platform, venueIdOrUrl, partySize } = parsed.data;
+  const { name, platform, venueIdOrUrl, partySizes } = parsed.data;
 
   // Resolve venue ID, keeping the original slug for URL construction
   let venueId: string;
   let venueSlug: string | null = null;
+  let venueCity: string | null = null;
   if (platform === 'resy') {
+    // Extract city from URL (e.g. /cities/chi/ → 'chi'), default 'ny'
+    try {
+      const u = new URL(venueIdOrUrl);
+      const m = u.pathname.match(/\/cities\/([^/]+)\//);
+      if (m) venueCity = m[1];
+    } catch { /* raw slug, no city to extract */ }
+
     const raw = parseResyVenueInput(venueIdOrUrl);
     if (!/^\d+$/.test(raw)) {
       venueSlug = raw;
       const apiKey = process.env.RESY_API_KEY ?? '';
       const resolved = apiKey ? await Promise.race([
-        resolveResyVenueId(raw, apiKey),
+        resolveResyVenueId(raw, apiKey, venueCity ?? 'ny'),
         new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000)),
       ]) : null;
       venueId = resolved ?? raw;
@@ -93,7 +101,9 @@ export async function POST(req: NextRequest) {
       platform,
       venue_id: venueId,
       venue_slug: venueSlug,
-      party_size: partySize,
+      venue_city: venueCity,
+      party_size: partySizes[0],
+      party_sizes: partySizes,
     })
     .select()
     .single();

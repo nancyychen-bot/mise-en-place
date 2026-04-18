@@ -62,30 +62,39 @@ export async function checkUserWatchlist(userId: string): Promise<CheckResult[]>
         const prevSlots: Slot[] = restaurant.available_slots ?? [];
         const prevSlotKeys = new Set(prevSlots.map((s: Slot) => `${s.date}:${s.time}`));
 
-        // Check all dates in parallel with a 6s per-call timeout
-        const slotsByDate = await Promise.all(
-          dates.map(async (date) => {
-            const withTimeout = <T>(p: Promise<T>): Promise<T> =>
-              Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error('timeout')), 6000))]);
+        // Support multiple party sizes; fall back to single party_size
+        const sizes: number[] =
+          Array.isArray(restaurant.party_sizes) && restaurant.party_sizes.length > 0
+            ? (restaurant.party_sizes as number[])
+            : [restaurant.party_size];
+        const city: string = (restaurant.venue_city as string | null) ?? 'ny';
 
-            if (restaurant.platform === 'resy') {
-              if (!apiKey) return [];
-              return withTimeout(findResyAvailability(apiKey, restaurant.venue_id, date, restaurant.party_size)).catch(() => []);
-            } else if (restaurant.platform === 'opentable') {
-              return withTimeout(findOpenTableAvailability(
-                restaurant.venue_id, date, settings.earliest_time, restaurant.party_size
-              )).catch(() => []);
-            } else if (restaurant.platform === 'sevenrooms') {
-              return withTimeout(findSevenRoomsAvailability(
-                restaurant.venue_id, date, restaurant.party_size
-              )).catch(() => []);
-            } else if (restaurant.platform === 'tock') {
-              return withTimeout(findTockAvailability(
-                restaurant.venue_id, date, settings.earliest_time, restaurant.party_size
-              )).catch(() => []);
-            }
-            return [];
-          })
+        // Check all dates × party sizes in parallel with a 6s per-call timeout
+        const slotsByDate = await Promise.all(
+          dates.flatMap(date =>
+            sizes.map(async (size) => {
+              const withTimeout = <T>(p: Promise<T>): Promise<T> =>
+                Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error('timeout')), 6000))]);
+
+              if (restaurant.platform === 'resy') {
+                if (!apiKey) return [];
+                return withTimeout(findResyAvailability(apiKey, restaurant.venue_id, date, size)).catch(() => []);
+              } else if (restaurant.platform === 'opentable') {
+                return withTimeout(findOpenTableAvailability(
+                  restaurant.venue_id, date, settings.earliest_time, size
+                )).catch(() => []);
+              } else if (restaurant.platform === 'sevenrooms') {
+                return withTimeout(findSevenRoomsAvailability(
+                  restaurant.venue_id, date, size
+                )).catch(() => []);
+              } else if (restaurant.platform === 'tock') {
+                return withTimeout(findTockAvailability(
+                  restaurant.venue_id, date, settings.earliest_time, size
+                )).catch(() => []);
+              }
+              return [];
+            })
+          )
         );
 
         // Collect all in-window slots and find which are new (not previously notified)
@@ -130,13 +139,14 @@ export async function checkUserWatchlist(userId: string): Promise<CheckResult[]>
           // Link directly to the first new slot's date/time for instant booking
           const firstSlot = newSlots[0];
           const slug = restaurant.venue_slug ?? restaurant.venue_id;
+          const primarySize = sizes[0];
           const bookingUrl = restaurant.platform === 'resy'
-            ? `https://resy.com/cities/ny/venues/${slug}?date=${firstSlot.date}&seats=${restaurant.party_size}`
+            ? `https://resy.com/cities/${city}/venues/${slug}?date=${firstSlot.date}&seats=${primarySize}`
             : restaurant.platform === 'opentable'
-            ? `https://www.opentable.com/r/${slug}?covers=${restaurant.party_size}&dateTime=${firstSlot.date}T${firstSlot.time}:00`
+            ? `https://www.opentable.com/r/${slug}?covers=${primarySize}&dateTime=${firstSlot.date}T${firstSlot.time}:00`
             : restaurant.platform === 'sevenrooms'
-            ? `https://www.sevenrooms.com/reservations/${slug}?date=${firstSlot.date}&party_size=${restaurant.party_size}`
-            : `https://www.exploretock.com/${slug}?date=${firstSlot.date}&size=${restaurant.party_size}&time=${firstSlot.time}`;
+            ? `https://www.sevenrooms.com/reservations/${slug}?date=${firstSlot.date}&party_size=${primarySize}`
+            : `https://www.exploretock.com/${slug}?date=${firstSlot.date}&size=${primarySize}&time=${firstSlot.time}`;
 
           await Promise.all([
             db.from('activity_log').insert({ user_id: userId, restaurant_id: restaurant.id, type: 'found', message: foundMsg }),

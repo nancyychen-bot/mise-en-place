@@ -7,6 +7,7 @@ const PatchSchema = z.object({
   name: z.string().min(1).max(200).optional(),
   active: z.boolean().optional(),
   partySize: z.number().int().min(1).max(20).optional(),
+  partySizes: z.array(z.number().int().min(1).max(20)).min(1).optional(),
 });
 
 type Params = { params: Promise<{ id: string }> };
@@ -33,6 +34,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (parsed.data.name !== undefined) updates.name = parsed.data.name;
   if (parsed.data.active !== undefined) updates.active = parsed.data.active;
   if (parsed.data.partySize !== undefined) updates.party_size = parsed.data.partySize;
+  if (parsed.data.partySizes !== undefined) {
+    updates.party_sizes = parsed.data.partySizes;
+    updates.party_size = parsed.data.partySizes[0]; // keep legacy in sync
+  }
 
   const { data, error } = await db
     .from('restaurants')
