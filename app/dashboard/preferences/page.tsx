@@ -7,7 +7,7 @@ import { BtnPrimary, BtnSecondary } from '@/components/buttons';
 const DEFAULTS: Omit<UserSettings, 'userId' | 'resyApiKey' | 'ntfyTopic' | 'ntfyPriority' | 'monitoringEnabled'> = {
   earliestTime: '18:00',
   latestTime: '20:00',
-  dayRange: 14,
+  dayRange: 7,
   daysOfWeek: 'all',
   checkIntervalMin: 5,
   activeHoursStart: '08:00',
