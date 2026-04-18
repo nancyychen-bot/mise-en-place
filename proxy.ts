@@ -11,6 +11,7 @@ const PUBLIC_PATHS = [
   '/api/admin/fix-venue-ids',
   '/api/admin/debug-resy',
   '/api/admin/debug-opentable',
+  '/api/resolve-opentable',
 ];
 
 export async function proxy(request: NextRequest) {

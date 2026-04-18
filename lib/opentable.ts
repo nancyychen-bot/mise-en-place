@@ -18,44 +18,17 @@ export async function resolveOpenTableVenueId(slugOrUrl: string): Promise<string
   } catch { /* raw slug */ }
 
   try {
-    const controller = new AbortController();
-    const pageRes = await fetch(`https://www.opentable.com/r/${encodeURIComponent(slug)}`, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36',
-        Accept: 'text/html,application/xhtml+xml',
-      },
-      signal: controller.signal,
-    });
-
-    if (!pageRes.ok || !pageRes.body) return null;
-
-    // Stream the response and stop as soon as we find the RID — avoids
-    // downloading the entire page (which causes timeouts).
-    const reader = pageRes.body.getReader();
-    const decoder = new TextDecoder();
-    let chunk = '';
-    let found: string | null = null;
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunk += decoder.decode(value, { stream: true });
-
-      const m1 = chunk.match(/"rid"\s*:\s*(\d+)/);
-      if (m1) { found = m1[1]; break; }
-      const m2 = chunk.match(/"restaurantId"\s*:\s*(\d+)/);
-      if (m2) { found = m2[1]; break; }
-      const m3 = chunk.match(/"restaurant_id"\s*:\s*(\d+)/);
-      if (m3) { found = m3[1]; break; }
-
-      if (chunk.length > 150_000) break; // safety cap at ~150KB
+    // Use the edge runtime endpoint which runs on Cloudflare's network
+    // and is not blocked by OpenTable like Vercel's serverless IPs are.
+    const base = process.env.NEXT_PUBLIC_APP_URL ?? 'https://mise-en-place-restaurants.vercel.app';
+    const res = await fetch(`${base}/api/resolve-opentable?slug=${encodeURIComponent(slug)}`);
+    if (res.ok) {
+      const data = await res.json() as { rid: string | null };
+      if (data.rid) return data.rid;
     }
+  } catch { /* fall through */ }
 
-    controller.abort();
-    return found;
-  } catch {
-    return null;
-  }
+  return null;
 }
 
 /**
