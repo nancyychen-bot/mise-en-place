@@ -57,11 +57,10 @@ export async function checkUserWatchlist(userId: string): Promise<CheckResult[]>
   const withTimeout = <T>(p: Promise<T>): Promise<T> =>
     Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error('timeout')), 6000))]);
 
-  const results: CheckResult[] = [];
-  for (const restaurant of restaurants) {
-    await sleep(300);
-    const checkedAt = new Date();
-    results.push(await (async () => {
+  const results: CheckResult[] = await Promise.all(
+    restaurants.map(async (restaurant) => {
+      await sleep(Math.random() * 500);
+      const checkedAt = new Date();
       try {
         // Build dedup set from previously stored slots for this restaurant
         const prevSlots: Slot[] = restaurant.available_slots ?? [];
@@ -174,8 +173,8 @@ export async function checkUserWatchlist(userId: string): Promise<CheckResult[]>
         });
         return { restaurantId: restaurant.id, restaurantName: restaurant.name, platform: restaurant.platform, slots: [], checkedAt };
       }
-    })());
-  }
+    })
+  );
 
   return results;
 }
