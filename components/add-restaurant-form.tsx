@@ -202,7 +202,7 @@ export default function AddRestaurantForm({ onAdd, onCheckNow, checking, checkMs
                 />
                 <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
                   {platform === 'opentable'
-                    ? <>On OpenTable, click <strong>Reserve</strong> then copy that URL &mdash; it contains the numeric ID.</>
+                    ? <>Enter the numeric RID directly. To find it: open the restaurant page, press <strong>Cmd+U</strong> (View Source), then search for <strong>&ldquo;rid&rdquo;</strong>.</>
                     : <>Paste the full URL &mdash; we&apos;ll extract the ID automatically.</>
                   }
                 </p>

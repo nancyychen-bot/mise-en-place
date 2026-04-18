@@ -256,7 +256,11 @@ export default function RestaurantCard({
           </div>
           {idError && <p style={{ fontSize: '11px', color: 'var(--tag-red)', marginTop: '4px' }}>{idError}</p>}
           <p style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Find it: open the {restaurant.platform === 'resy' ? 'Resy' : 'OpenTable'} page → View Page Source → search for &quot;rid&quot;
+            {restaurant.platform === 'opentable' ? (
+              <>Find it: <a href={`view-source:https://www.opentable.com/r/${restaurant.venueSlug ?? restaurant.venueId}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-secondary)', textDecoration: 'underline' }}>View page source</a> → search for <strong>&ldquo;rid&rdquo;</strong></>
+            ) : (
+              <>Find it: open the Resy page → View Page Source → search for <strong>&ldquo;rid&rdquo;</strong></>
+            )}
           </p>
         </div>
       )}
