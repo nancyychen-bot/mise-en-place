@@ -101,7 +101,7 @@ export default async function LandingPage() {
               marginTop: '10px',
             }}
           >
-            Get notified every time one of your favourite restaurants has an upcoming opening
+            Get notified every time one of your top restaurants has an upcoming opening
           </p>
         </div>
       </header>
@@ -130,8 +130,7 @@ export default async function LandingPage() {
             marginBottom: '48px',
           }}
         >
-          Monitor Resy and OpenTable for impossible reservations — get a free push
-          notification the moment a table opens up.
+          Monitor restaurants with impossible reservations. Check any time and get free push notifications the moment a table opens up. Works with Resy, Opentable, SevenRooms and Tock.
         </p>
 
         <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'center' }}>
