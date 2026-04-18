@@ -12,9 +12,9 @@ interface Suggestion {
 }
 
 const SUGGESTIONS: Suggestion[] = [
-  { name: "Don Angie", platform: "resy", venueIdOrUrl: "https://resy.com/cities/ny/venues/don-angie", partySize: 2 },
-  { name: "Via Carota", platform: "resy", venueIdOrUrl: "https://resy.com/cities/ny/venues/via-carota", partySize: 2 },
-  { name: "Le Bernardin", platform: "resy", venueIdOrUrl: "https://resy.com/cities/ny/venues/le-bernardin", partySize: 2 },
+  { name: "Four Horsemen", platform: "resy", venueIdOrUrl: "https://resy.com/cities/ny/venues/four-horsemen", partySize: 2 },
+  { name: "Theodora", platform: "resy", venueIdOrUrl: "https://resy.com/cities/ny/venues/theodora", partySize: 2 },
+  { name: "Atomix", platform: "resy", venueIdOrUrl: "https://resy.com/cities/ny/venues/atomix", partySize: 2 },
   { name: "Carbone", platform: "sevenrooms", venueIdOrUrl: "https://www.sevenrooms.com/reservations/carbonenewyork", partySize: 2 },
 ];
 
