@@ -110,7 +110,7 @@ export default function SetupPage() {
             fontWeight: 500,
           }}
         >
-          Est. 15 minutes · Free forever
+          Est. 10 minutes · Free forever
         </span>
       </div>
 
@@ -220,17 +220,18 @@ export default function SetupPage() {
       <Step number={3} eyebrow="About 3 minutes" title="Add your first restaurant">
         <p style={descStyle}>
           Time for the fun part. Let&rsquo;s add a restaurant to your watchlist so Mise en Place knows
-          what to watch.
+          what to watch. We support both <strong>Resy</strong> and <strong>OpenTable</strong>.
         </p>
 
         <strong style={{ fontSize: '13px' }}>Do this:</strong>
         <ol style={{ margin: '16px 0 16px 22px', fontSize: '14px', lineHeight: 1.7, color: 'var(--text)' }}>
           <li style={{ marginBottom: '8px' }}>
-            <strong>Go back to resy.com</strong> and find a restaurant you want to watch.
-          </li>
-          <li style={{ marginBottom: '8px' }}>
-            <strong>Copy the URL</strong> from your browser&rsquo;s address bar. It&rsquo;ll look
-            like: <code className="code">resy.com/cities/ny/venues/don-angie</code>
+            <strong>Find the restaurant on Resy or OpenTable</strong> and copy its URL from your
+            browser&rsquo;s address bar. Examples:
+            <ul style={{ margin: '8px 0 0 20px', lineHeight: 1.7 }}>
+              <li>Resy: <code className="code">resy.com/cities/ny/venues/don-angie</code></li>
+              <li>OpenTable: <code className="code">opentable.com/r/don-angie-new-york</code></li>
+            </ul>
           </li>
           <li style={{ marginBottom: '8px' }}>
             <strong>Come back to Mise en Place</strong> and click the{' '}
@@ -240,8 +241,8 @@ export default function SetupPage() {
             tab, then &ldquo;+ Add Restaurant.&rdquo;
           </li>
           <li style={{ marginBottom: '8px' }}>
-            <strong>Paste the URL</strong> into the &ldquo;Venue ID or URL&rdquo; field. Don&rsquo;t
-            worry about the venue ID number — we&rsquo;ll figure it out from the URL.
+            <strong>Paste the URL</strong> into the &ldquo;Venue ID or URL&rdquo; field — we&rsquo;ll
+            figure out the platform and venue ID automatically.
           </li>
           <li style={{ marginBottom: '8px' }}>
             <strong>Type the restaurant name, pick your party size, click Save.</strong>
@@ -258,45 +259,18 @@ export default function SetupPage() {
         </Callout>
       </Step>
 
-      {/* Step 4 */}
-      <Step number={4} eyebrow="About 2 minutes" title="Turn it on">
-        <p style={descStyle}>
-          Your watchlist is set up — now let&rsquo;s actually start the monitoring. You have two
-          options, from easiest to nerdiest.
-        </p>
-
-        <strong style={{ fontSize: '13px' }}>Option A — Easy (hosted, recommended):</strong>
-        <ol style={{ margin: '16px 0 16px 22px', fontSize: '14px', lineHeight: 1.7, color: 'var(--text)' }}>
-          <li style={{ marginBottom: '8px' }}>
-            On your{' '}
-            <Link href="/dashboard/account" style={{ textDecoration: 'underline' }}>
-              Account
-            </Link>{' '}
-            page, flip the &ldquo;Monitoring&rdquo; switch to ON.
-          </li>
-          <li style={{ marginBottom: '8px' }}>
-            That&rsquo;s it. Our hosted service runs your checks on a schedule. You can close this
-            browser tab and your phone will still buzz when a slot opens.
-          </li>
-        </ol>
-
-        <strong style={{ fontSize: '13px' }}>Option B — Nerdy (run it yourself):</strong>
-        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '8px 0 12px' }}>
-          If you&rsquo;d rather run the checker on your own laptop (e.g., for full control), clone
-          the repo and run it locally:
-        </p>
-        <pre className="code-block">{`git clone https://github.com/mise-en-place/checker
-cd checker
-npm install
-cp .env.example .env
-# paste your keys into .env
-npm start`}</pre>
-
+      {/* Done */}
+      <div style={{ marginBottom: '48px' }}>
         <Callout variant="tip">
-          <strong>You&rsquo;re done!</strong> Go cook something, or go for a walk. Your phone will
-          buzz when Don Angie has a 7 PM table.
+          <strong>You&rsquo;re all set!</strong> Monitoring is already running — there&rsquo;s nothing
+          else to turn on. Go cook something, or go for a walk. Your phone will buzz when a table opens
+          up. You can pause monitoring anytime from the{' '}
+          <Link href="/dashboard/account" style={{ textDecoration: 'underline' }}>
+            Account
+          </Link>{' '}
+          page.
         </Callout>
-      </Step>
+      </div>
     </div>
   );
 }

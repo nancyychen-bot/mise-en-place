@@ -104,13 +104,22 @@ function toHHMMInZone(date: Date, timezone: string): string {
  * Returns an array of date strings "YYYY-MM-DD" for the next `days` days
  * starting from today, filtered by `daysOfWeek`.
  */
-export function getDateRange(days: number, pattern: DaysOfWeek): string[] {
+export function getDateRange(days: number, pattern: DaysOfWeek, timezone = 'America/New_York'): string[] {
   const result: string[] = [];
   const now = new Date();
 
+  // Determine today's date in the user's timezone
+  const todayStr = new Intl.DateTimeFormat('en-CA', { // en-CA gives YYYY-MM-DD
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now);
+  const today = new Date(`${todayStr}T00:00:00`);
+
   for (let i = 0; i < days; i++) {
-    const d = new Date(now);
-    d.setDate(now.getDate() + i);
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
     if (isDayOfWeekAllowed(d, pattern)) {
       result.push(d.toISOString().slice(0, 10));
     }

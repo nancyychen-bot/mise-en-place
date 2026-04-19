@@ -52,7 +52,7 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
   if (!restaurants?.length) throw new Error(`No active restaurants found on your watchlist.`);
 
   const apiKey: string = process.env.RESY_API_KEY ?? settings.resy_api_key ?? '';
-  const dates = getDateRange(settings.day_range, settings.days_of_week);
+  const dates = getDateRange(settings.day_range, settings.days_of_week, tz);
 
   const withTimeout = <T>(p: Promise<T>): Promise<T> =>
     Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error('timeout')), 6000))]);

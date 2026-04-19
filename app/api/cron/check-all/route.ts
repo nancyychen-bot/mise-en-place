@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { checkUserWatchlist } from '@/lib/checker';
 
+export const maxDuration = 60; // seconds — Vercel Pro max for hobby/pro plans
+
 export async function POST(req: NextRequest) {
   // Verify cron secret
   const auth = req.headers.get('authorization');
@@ -12,9 +14,18 @@ export async function POST(req: NextRequest) {
   }
 
   // Find users who are due for a check right now.
-  // Rule: floor(minutes_since_epoch) % check_interval_min === 0
-  // OR last_checked is null / older than interval.
+  // Each user gets a stable offset derived from their user_id so checks are
+  // spread across the interval window instead of all firing at minute 0.
+  // Rule: (minutesSinceEpoch - offset) % check_interval_min === 0
   const minutesSinceEpoch = Math.floor(Date.now() / 60000);
+
+  function userOffset(userId: string, interval: number): number {
+    let hash = 0;
+    for (let i = 0; i < userId.length; i++) {
+      hash = (Math.imul(hash, 31) + userId.charCodeAt(i)) | 0;
+    }
+    return Math.abs(hash) % interval;
+  }
 
   const { data: allSettings, error } = await db
     .from('user_settings')
@@ -27,7 +38,7 @@ export async function POST(req: NextRequest) {
   }
 
   const dueUserIds = (allSettings ?? [])
-    .filter((s) => minutesSinceEpoch % s.check_interval_min === 0)
+    .filter((s) => (minutesSinceEpoch - userOffset(s.user_id, s.check_interval_min)) % s.check_interval_min === 0)
     .map((s) => s.user_id);
 
   if (dueUserIds.length === 0) {
@@ -42,6 +53,10 @@ export async function POST(req: NextRequest) {
       )
     )
   );
+
+  // Prune activity log entries older than 7 days (runs every cron tick, cheap)
+  const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  await db.from('activity_log').delete().lt('created_at', cutoff);
 
   return NextResponse.json({ checked: dueUserIds.length });
 }
