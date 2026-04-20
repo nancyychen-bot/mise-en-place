@@ -4,7 +4,7 @@ import { checkUserWatchlist } from '@/lib/checker';
 
 export const maxDuration = 60; // seconds — Vercel Pro max for hobby/pro plans
 
-export async function GET(req: NextRequest) {
+async function handler(req: NextRequest) {
   // Verify cron secret
   const auth = req.headers.get('authorization');
   const secret = process.env.CRON_SECRET;
@@ -60,3 +60,5 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ checked: dueUserIds.length });
 }
+
+export { handler as GET, handler as POST };

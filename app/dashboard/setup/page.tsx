@@ -110,7 +110,7 @@ export default function SetupPage() {
             fontWeight: 500,
           }}
         >
-          Est. 10 minutes · Free forever
+          Est. 8 minutes · Free forever
         </span>
       </div>
 
@@ -141,97 +141,55 @@ export default function SetupPage() {
       </div>
 
       {/* Step 1 */}
-      <Step number={1} eyebrow="About 3 minutes" title="Set up push notifications with ntfy.sh">
+      <Step number={1} eyebrow="About 5 minutes" title="Set up push notifications with ntfy.sh">
         <p style={descStyle}>
-          This is how your phone will get the alert when a reservation opens up. Think of it like a
-          private channel that only you can see. When our program finds a slot, it sends a message to
-          your channel, and your phone buzzes.
+          This is how your phone gets alerted when a reservation opens up. You pick a secret topic
+          name, subscribe on your phone, and paste it here — that&rsquo;s it.
         </p>
 
         <Callout variant="tip">
-          <strong>Why ntfy.sh?</strong> It&rsquo;s 100% free, there are no ads, and you don&rsquo;t
-          need to give them your phone number or email. You just pick a secret name for your channel,
-          tell your phone to listen for it, and you&rsquo;re done.
+          <strong>Why ntfy.sh?</strong> It&rsquo;s 100% free, no ads, no phone number or email
+          required. Just a secret name for your channel.
         </Callout>
 
         <strong style={{ fontSize: '13px' }}>Do this:</strong>
         <ol style={{ margin: '16px 0 16px 22px', fontSize: '14px', lineHeight: 1.7, color: 'var(--text)' }}>
           <li style={{ marginBottom: '8px' }}>
-            <strong>Install the ntfy app on your phone.</strong> Search for &ldquo;ntfy&rdquo; (spelled
-            N-T-F-Y) in the App Store or Google Play. The icon is a little speaker. Install it — it&rsquo;s
-            free.
+            <strong>Install the ntfy app on your phone.</strong> Search for &ldquo;ntfy&rdquo; (N-T-F-Y)
+            in the App Store or Google Play. It&rsquo;s free.
           </li>
           <li style={{ marginBottom: '8px' }}>
-            <strong>Open the app and tap &ldquo;Subscribe to topic.&rdquo;</strong> Now pick a secret
-            name. This is like a password — if someone guesses it, they can send you notifications too,
-            so make it weird. Good examples:{' '}
-            <code className="code">reso-nancy-x9k2-dinner</code> or{' '}
-            <code className="code">mise-nyc-secret-2026</code>. Bad examples:{' '}
-            <code className="code">pizza</code> (too guessable).
+            <strong>Tap &ldquo;Subscribe to topic&rdquo;</strong> and pick a secret name. Make it
+            hard to guess — e.g.{' '}
+            <code className="code">reso-nancy-x9k2-dinner</code>. Tap <strong>Subscribe</strong>.
           </li>
           <li style={{ marginBottom: '8px' }}>
-            <strong>Tap &ldquo;Subscribe.&rdquo;</strong> The app is now listening for any messages sent
-            to that name.
+            <strong>Copy your topic name</strong>, then open the{' '}
+            <Link href="/dashboard/account" style={{ textDecoration: 'underline' }}>
+              Account
+            </Link>{' '}
+            tab and paste it into the Notifications field.
           </li>
           <li style={{ marginBottom: '8px' }}>
-            <strong>Copy your topic name.</strong> You&rsquo;ll paste it into Mise en Place in a moment.
-            Write it down so you don&rsquo;t forget.
-          </li>
-          <li style={{ marginBottom: '8px' }}>
-            <strong>Test it!</strong> Come back to this page when you&rsquo;re ready. We&rsquo;ll send a
-            test notification in a few steps.
+            <strong>Click &ldquo;Save Changes,&rdquo;</strong> then{' '}
+            <strong>&ldquo;Send Test Notification.&rdquo;</strong> Your phone should buzz within 5
+            seconds.
           </li>
         </ol>
       </Step>
 
       {/* Step 2 */}
-      <Step number={2} eyebrow="About 2 minutes" title="Set up your ntfy topic in Account">
-        <p style={descStyle}>
-          Now we&rsquo;ll link your ntfy topic to Mise en Place so it knows where to send alerts.
-        </p>
-
-        <strong style={{ fontSize: '13px' }}>Do this:</strong>
-        <ol style={{ margin: '16px 0 16px 22px', fontSize: '14px', lineHeight: 1.7, color: 'var(--text)' }}>
-          <li style={{ marginBottom: '8px' }}>
-            <strong>
-              Click the{' '}
-              <Link href="/dashboard/account" style={{ textDecoration: 'underline' }}>
-                Account
-              </Link>{' '}
-              tab
-            </strong>{' '}
-            at the top of this page.
-          </li>
-          <li style={{ marginBottom: '8px' }}>
-            <strong>Paste your ntfy topic</strong> into the Notifications field. It should be just the
-            name, like <code className="code">reso-nancy-x9k2-dinner</code> — no https:// in front.
-          </li>
-          <li style={{ marginBottom: '8px' }}>
-            <strong>Click &ldquo;Save Changes.&rdquo;</strong>
-          </li>
-          <li style={{ marginBottom: '8px' }}>
-            <strong>Click &ldquo;Send Test Notification.&rdquo;</strong> Your phone should buzz within
-            5 seconds with a test message. If it does — you&rsquo;re all set!
-          </li>
-        </ol>
-      </Step>
-
-      {/* Step 3 */}
-      <Step number={3} eyebrow="About 3 minutes" title="Add your first restaurant">
+      <Step number={2} eyebrow="About 3 minutes" title="Add your first restaurant">
         <p style={descStyle}>
           Time for the fun part. Let&rsquo;s add a restaurant to your watchlist so Mise en Place knows
           what to watch. We support both <strong>Resy</strong> and <strong>OpenTable</strong>.
         </p>
 
-        <strong style={{ fontSize: '13px' }}>Do this:</strong>
-        <ol style={{ margin: '16px 0 16px 22px', fontSize: '14px', lineHeight: 1.7, color: 'var(--text)' }}>
+        <strong style={{ fontSize: '13px' }}>For Resy:</strong>
+        <ol style={{ margin: '16px 0 24px 22px', fontSize: '14px', lineHeight: 1.7, color: 'var(--text)' }}>
           <li style={{ marginBottom: '8px' }}>
-            <strong>Find the restaurant on Resy or OpenTable</strong> and copy its URL from your
-            browser&rsquo;s address bar. Examples:
-            <ul style={{ margin: '8px 0 0 20px', lineHeight: 1.7 }}>
-              <li>Resy: <code className="code">resy.com/cities/ny/venues/don-angie</code></li>
-              <li>OpenTable: <code className="code">opentable.com/r/don-angie-new-york</code></li>
-            </ul>
+            <strong>Find the restaurant on Resy</strong> and copy its URL. Example:{' '}
+            <code className="code">resy.com/cities/ny/venues/don-angie</code>
           </li>
           <li style={{ marginBottom: '8px' }}>
             <strong>Come back to Mise en Place</strong> and click the{' '}
@@ -242,13 +200,45 @@ export default function SetupPage() {
           </li>
           <li style={{ marginBottom: '8px' }}>
             <strong>Paste the URL</strong> into the &ldquo;Venue ID or URL&rdquo; field — we&rsquo;ll
-            figure out the platform and venue ID automatically.
+            extract the venue ID automatically.
           </li>
           <li style={{ marginBottom: '8px' }}>
             <strong>Type the restaurant name, pick your party size, click Save.</strong>
           </li>
-          <li style={{ marginBottom: '8px' }}>Repeat for each restaurant you want to watch!</li>
         </ol>
+
+        <strong style={{ fontSize: '13px' }}>For OpenTable:</strong>
+        <Callout variant="warn">
+          OpenTable doesn&rsquo;t expose its venue ID in the URL — you need to find it in the page
+          source. This takes about 60 seconds.
+        </Callout>
+        <ol style={{ margin: '16px 0 16px 22px', fontSize: '14px', lineHeight: 1.7, color: 'var(--text)' }}>
+          <li style={{ marginBottom: '8px' }}>
+            <strong>Open the restaurant&rsquo;s OpenTable page</strong> in your browser.
+          </li>
+          <li style={{ marginBottom: '8px' }}>
+            <strong>View the page source</strong> — press{' '}
+            <code className="code">Cmd+U</code> (Mac) or{' '}
+            <code className="code">Ctrl+U</code> (Windows), or right-click anywhere and choose
+            &ldquo;View Page Source.&rdquo;
+          </li>
+          <li style={{ marginBottom: '8px' }}>
+            <strong>Search for <code className="code">&quot;rid&quot;</code></strong> — press{' '}
+            <code className="code">Cmd+F</code> / <code className="code">Ctrl+F</code> and type{' '}
+            <code className="code">&quot;rid&quot;</code>. Look for a line like{' '}
+            <code className="code">&ldquo;rid&rdquo;:12345</code>. That number is the venue ID.
+          </li>
+          <li style={{ marginBottom: '8px' }}>
+            <strong>Come back to Mise en Place</strong>, click &ldquo;+ Add Restaurant,&rdquo; select{' '}
+            <strong>OpenTable</strong> as the platform, and paste the numeric ID into the
+            &ldquo;Venue ID&rdquo; field.
+          </li>
+          <li style={{ marginBottom: '8px' }}>
+            <strong>Type the restaurant name, pick your party size, click Save.</strong>
+          </li>
+        </ol>
+
+        <p style={{ ...descStyle, marginTop: '-4px' }}>Repeat for each restaurant you want to watch!</p>
 
         <Callout variant="tip">
           <strong>Pro tip:</strong> Hit the{' '}
