@@ -54,10 +54,6 @@ async function handler(req: NextRequest) {
     )
   );
 
-  // Prune activity log entries older than 7 days (runs every cron tick, cheap)
-  const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-  await db.from('activity_log').delete().lt('created_at', cutoff);
-
   return NextResponse.json({ checked: dueUserIds.length });
 }
 

@@ -22,7 +22,7 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
   // Load settings
   const { data: settings, error: settingsErr } = await db
     .from('user_settings')
-    .select('*')
+    .select('user_id, monitoring_enabled, timezone, active_hours_start, active_hours_end, resy_api_key, day_range, days_of_week, earliest_time, latest_time, quiet_hours_start, quiet_hours_end, ntfy_topic, ntfy_priority')
     .eq('user_id', userId)
     .single();
 
@@ -44,7 +44,7 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
   // Load active restaurants
   const { data: restaurants, error: restErr } = await db
     .from('restaurants')
-    .select('*')
+    .select('id, name, platform, venue_id, venue_slug, venue_city, party_size, party_sizes, available_slots')
     .eq('user_id', userId)
     .eq('active', true);
 

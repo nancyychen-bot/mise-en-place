@@ -35,19 +35,7 @@ export default async function LandingPage() {
             fontWeight: 500,
           }}
         >
-          <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-            <span
-              style={{
-                border: '1px solid var(--border-light)',
-                padding: '3px 8px',
-                fontSize: '10px',
-                fontWeight: 600,
-                letterSpacing: '0.08em',
-              }}
-            >
-              EN
-            </span>
-          </div>
+          <div />
           <div style={{ display: 'flex', gap: '20px' }}>
             <Link href="/signin" style={{ color: 'var(--text-secondary)' }}>
               Sign In

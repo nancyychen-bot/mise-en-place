@@ -5,6 +5,7 @@ import type { NtfyPriority } from '@/lib/types';
 import { BtnPrimary, BtnSecondary } from '@/components/buttons';
 import FieldRow from '@/components/field-row';
 import Toggle from '@/components/toggle';
+import SignOutButton from '@/components/sign-out-button';
 
 interface AccountData {
   email: string;
@@ -13,6 +14,7 @@ interface AccountData {
   ntfyPriority: NtfyPriority;
   monitoringEnabled: boolean;
   timezone: string;
+  resyApiKey: string | null;
 }
 
 const sectionStyle: React.CSSProperties = {
@@ -36,6 +38,7 @@ export default function AccountPage() {
     ntfyPriority: 'default',
     monitoringEnabled: true,
     timezone: 'America/New_York',
+    resyApiKey: null,
   });
 
   const [saving, setSaving] = useState(false);
@@ -64,6 +67,7 @@ export default function AccountPage() {
       ntfyPriority: data.ntfyPriority,
       monitoringEnabled: data.monitoringEnabled,
       timezone: data.timezone,
+      resyApiKey: data.resyApiKey ?? undefined,
     };
 
     try {
@@ -196,6 +200,24 @@ export default function AccountPage() {
           </FieldRow>
         </div>
 
+        {/* API Keys */}
+        <div style={sectionStyle}>
+          <h2 style={sectionHeaderStyle}>API Keys</h2>
+          <FieldRow
+            label="Resy API Key"
+            description="Required to check Resy restaurants. See Setup Guide for how to find yours."
+          >
+            <input
+              type="password"
+              style={inputStyle}
+              value={data.resyApiKey ?? ''}
+              onChange={(e) => setData((d) => ({ ...d, resyApiKey: e.target.value || null }))}
+              placeholder="See Setup Guide for instructions on retrieving your key"
+              autoComplete="off"
+            />
+          </FieldRow>
+        </div>
+
         {/* Monitoring */}
         <div style={sectionStyle}>
           <h2 style={sectionHeaderStyle}>Monitoring</h2>
@@ -282,9 +304,12 @@ export default function AccountPage() {
             Delete Account
           </button>
 
-          <BtnPrimary type="submit" disabled={saving}>
-            {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save Changes'}
-          </BtnPrimary>
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+            <SignOutButton />
+            <BtnPrimary type="submit" disabled={saving}>
+              {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save Changes'}
+            </BtnPrimary>
+          </div>
         </div>
       </form>
     </div>
