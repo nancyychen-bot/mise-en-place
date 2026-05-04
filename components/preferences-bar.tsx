@@ -6,6 +6,8 @@ interface PreferencesBarProps {
     UserSettings,
     'earliestTime' | 'latestTime' | 'dayRange' | 'daysOfWeek' | 'checkIntervalMin' | 'activeHoursStart' | 'activeHoursEnd' | 'ntfyTopic'
   >;
+  watchingCount: number;
+  slotsFoundCount: number;
 }
 
 function fmt12h(time: string): string {
@@ -24,13 +26,21 @@ const DAYS_LABEL: Record<string, string> = {
   'fri-sun': 'Fri–Sun',
 };
 
-export default function PreferencesBar({ settings }: PreferencesBarProps) {
+export default function PreferencesBar({ settings, watchingCount, slotsFoundCount }: PreferencesBarProps) {
   const {
     earliestTime, latestTime, dayRange, daysOfWeek,
     checkIntervalMin, activeHoursStart, activeHoursEnd, ntfyTopic
   } = settings;
 
   const prefs = [
+    {
+      label: 'Watching',
+      value: String(watchingCount),
+    },
+    {
+      label: 'Slots Found',
+      value: String(slotsFoundCount),
+    },
     {
       label: 'Time Window',
       value: `${fmt12h(earliestTime)} – ${fmt12h(latestTime)}`,
@@ -57,7 +67,7 @@ export default function PreferencesBar({ settings }: PreferencesBarProps) {
         marginBottom: '32px',
         gap: '16px',
       }}
-      className="grid grid-cols-2 min-[720px]:grid-cols-4"
+      className="grid grid-cols-2 min-[720px]:grid-cols-3 min-[960px]:grid-cols-6"
     >
       {prefs.map(({ label, value }, i) => (
         <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
