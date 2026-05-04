@@ -3,9 +3,15 @@ import { db } from '@/lib/db';
 import { resolveResyVenueId } from '@/lib/resy';
 import { resolveOpenTableVenueId } from '@/lib/opentable';
 
+function isAuthorized(req: NextRequest) {
+  const secret = process.env.CRON_SECRET;
+  return secret && req.headers.get('authorization') === `Bearer ${secret}`;
+}
+
 // PATCH: manually set venue IDs — body: { "slug": "numeric_id", ... }
 // Works for both resy and opentable restaurants
 export async function PATCH(req: NextRequest) {
+  if (!isAuthorized(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const map: Record<string, string> = await req.json();
   const results = [];
   for (const [slug, numericId] of Object.entries(map)) {
@@ -19,7 +25,8 @@ export async function PATCH(req: NextRequest) {
 }
 
 // GET: auto-resolve OpenTable slug-based venue IDs
-export async function GET() {
+export async function GET(req: NextRequest) {
+  if (!isAuthorized(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { data: restaurants } = await db
     .from('restaurants')
     .select('id, name, venue_id')
@@ -44,7 +51,8 @@ export async function GET() {
   return NextResponse.json({ results });
 }
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  if (!isAuthorized(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const apiKey = process.env.RESY_API_KEY ?? '';
   if (!apiKey) return NextResponse.json({ error: 'No RESY_API_KEY' }, { status: 500 });
 

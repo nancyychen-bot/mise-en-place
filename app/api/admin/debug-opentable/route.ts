@@ -13,6 +13,11 @@ async function tryFetch(url: string, headers: Record<string, string>) {
 }
 
 export async function GET(req: NextRequest) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret || req.headers.get('authorization') !== `Bearer ${secret}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const slug = req.nextUrl.searchParams.get('slug') ?? 'red-hook-tavern-brooklyn';
   const name = req.nextUrl.searchParams.get('name') ?? 'red hook tavern';
 

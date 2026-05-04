@@ -134,9 +134,11 @@ export default function SetupPage() {
           Read this first!
         </p>
         <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
-          Mise en Place is free because <em>you</em> run the checks on your own computer (or a free
-          cloud service). We&rsquo;ll walk you through every step, explaining what each thing does and
-          why. No prior experience needed — just follow the instructions in order.
+          Mise en Place is free because it uses no-cost notifications, and functional because it
+          requires you to dig into the OpenTable/Resy source code to get IDs and APIs that allow you
+          to track. They make it difficult to avoid trackers like these swooping reservations, so
+          there are extra steps to get around that. Just follow the instructions below and you are
+          good to go!
         </p>
       </div>
 
@@ -204,7 +206,7 @@ export default function SetupPage() {
             like this:
             <br />
             <code className="code" style={{ display: 'inline-block', marginTop: '6px' }}>
-              ResyAPI api_key=&quot;VbWk7s3L4KiK5fzlO7JD3Q5EYolJI7n5&quot;
+              ResyAPI api_key=&quot;tQ9mXr2Pn8vKwL4eHcYj6bAsDf3GzU7i&quot;
             </code>
           </li>
           <li style={{ marginBottom: '8px' }}>

@@ -1,20 +1,30 @@
 import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/auth';
 import { checkUserWatchlist } from '@/lib/checker';
+import { db } from '@/lib/db';
 
-// Simple per-user rate limiter: 1 request per 5s
-const lastRun = new Map<string, number>();
-const RATE_LIMIT_MS = 5000;
+const RATE_LIMIT_MS = 30000; // 30 seconds between manual checks
 
 export async function POST() {
   const user = await requireUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const last = lastRun.get(user.id) ?? 0;
-  if (Date.now() - last < RATE_LIMIT_MS) {
+  // DB-backed rate limit — survives cold starts
+  const { data: settings } = await db
+    .from('user_settings')
+    .select('last_manual_check_at')
+    .eq('user_id', user.id)
+    .single();
+
+  const lastRun = settings?.last_manual_check_at ? new Date(settings.last_manual_check_at).getTime() : 0;
+  if (Date.now() - lastRun < RATE_LIMIT_MS) {
     return NextResponse.json({ error: 'Rate limited — wait a few seconds' }, { status: 429 });
   }
-  lastRun.set(user.id, Date.now());
+
+  await db
+    .from('user_settings')
+    .update({ last_manual_check_at: new Date().toISOString() })
+    .eq('user_id', user.id);
 
   try {
     const results = await checkUserWatchlist(user.id, true);

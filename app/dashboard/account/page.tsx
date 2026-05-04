@@ -164,6 +164,9 @@ export default function AccountPage() {
               onChange={(e) => setData((d) => ({ ...d, ntfyTopic: e.target.value || null }))}
               placeholder="e.g. mise-en-place-nancy-x9k2"
             />
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px' }}>
+              Hit <strong>Save Changes</strong> at the bottom before testing notifications.
+            </p>
           </FieldRow>
           <FieldRow
             label="Notification Priority"
@@ -215,6 +218,9 @@ export default function AccountPage() {
               placeholder="See Setup Guide for instructions on retrieving your key"
               autoComplete="off"
             />
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px' }}>
+              Hit <strong>Save Changes</strong> at the bottom after adding your key.
+            </p>
           </FieldRow>
         </div>
 

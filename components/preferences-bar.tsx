@@ -94,7 +94,7 @@ export default function PreferencesBar({ settings, watchingCount, slotsFoundCoun
           </p>
           {i === prefs.length - 1 && (
             <Link
-              href="/dashboard/preferences"
+              href="/dashboard/account"
               style={{
                 fontSize: '11px',
                 color: 'var(--tag-red)',
