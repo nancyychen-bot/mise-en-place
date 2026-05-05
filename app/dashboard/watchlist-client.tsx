@@ -31,6 +31,8 @@ function normalizeRestaurant(r: any): Restaurant {
     active: r.active,
     lastChecked: r.last_checked ? new Date(r.last_checked) : null,
     createdAt: new Date(r.created_at),
+    earliestTime: r.earliest_time ?? null,
+    latestTime: r.latest_time ?? null,
   };
 }
 

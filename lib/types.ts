@@ -39,6 +39,8 @@ export interface Restaurant {
   active: boolean;
   lastChecked: Date | null;
   createdAt: Date;
+  earliestTime: string | null;
+  latestTime: string | null;
 }
 
 export interface Slot {

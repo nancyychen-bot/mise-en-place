@@ -44,7 +44,7 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
   // Load active restaurants
   const { data: restaurants, error: restErr } = await db
     .from('restaurants')
-    .select('id, name, platform, venue_id, venue_slug, venue_city, party_size, party_sizes, available_slots')
+    .select('id, name, platform, venue_id, venue_slug, venue_city, party_size, party_sizes, available_slots, earliest_time, latest_time')
     .eq('user_id', userId)
     .eq('active', true);
 
@@ -73,6 +73,9 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
             : [restaurant.party_size];
         const city: string = (restaurant.venue_city as string | null) ?? 'ny';
 
+        const effectiveEarliest = restaurant.earliest_time ?? settings.earliest_time;
+        const effectiveLatest = restaurant.latest_time ?? settings.latest_time;
+
         const combos = dates.flatMap(date => sizes.map(size => ({ date, size })));
 
         const slotsByDate = await Promise.all(
@@ -83,7 +86,7 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
               slots = await withTimeout(findResyAvailability(apiKey, restaurant.venue_id, date, size)).catch(() => []);
             } else if (restaurant.platform === 'opentable') {
               slots = await withTimeout(findOpenTableAvailability(
-                restaurant.venue_id, date, settings.earliest_time, size
+                restaurant.venue_id, date, effectiveEarliest, size
               )).catch(() => []);
             } else if (restaurant.platform === 'sevenrooms') {
               slots = await withTimeout(findSevenRoomsAvailability(
@@ -91,7 +94,7 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
               )).catch(() => []);
             } else if (restaurant.platform === 'tock') {
               slots = await withTimeout(findTockAvailability(
-                restaurant.venue_id, date, settings.earliest_time, size
+                restaurant.venue_id, date, effectiveEarliest, size
               )).catch(() => []);
             }
             return slots;
@@ -104,7 +107,7 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
 
         for (const slots of slotsByDate) {
           for (const slot of slots) {
-            if (!isSlotInWindow(slot.time, settings.earliest_time, settings.latest_time)) continue;
+            if (!isSlotInWindow(slot.time, effectiveEarliest, effectiveLatest)) continue;
             allSlotsInWindow.push(slot);
             if (!prevSlotKeys.has(`${slot.date}:${slot.time}`)) {
               newSlots.push(slot);

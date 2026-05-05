@@ -3,11 +3,15 @@ import { z } from 'zod';
 import { requireUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 
+const timeRe = /^\d{2}:\d{2}$/;
+
 const PatchSchema = z.object({
   name: z.string().min(1).max(200).optional(),
   active: z.boolean().optional(),
   partySize: z.number().int().min(1).max(20).optional(),
   partySizes: z.array(z.number().int().min(1).max(20)).min(1).optional(),
+  earliestTime: z.string().regex(timeRe).nullable().optional(),
+  latestTime: z.string().regex(timeRe).nullable().optional(),
 });
 
 type Params = { params: Promise<{ id: string }> };
@@ -38,6 +42,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     updates.party_sizes = parsed.data.partySizes;
     updates.party_size = parsed.data.partySizes[0]; // keep legacy in sync
   }
+  if (parsed.data.earliestTime !== undefined) updates.earliest_time = parsed.data.earliestTime;
+  if (parsed.data.latestTime !== undefined) updates.latest_time = parsed.data.latestTime;
 
   const { data, error } = await db
     .from('restaurants')

@@ -4,6 +4,14 @@ import { useState } from 'react';
 import type { Restaurant, Slot } from '@/lib/types';
 import PlatformTag from './platform-tag';
 
+function fmt12h(time: string): string {
+  const [hStr, mStr] = time.split(':');
+  const h = parseInt(hStr, 10);
+  const suffix = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return `${h12}:${mStr} ${suffix}`;
+}
+
 interface RestaurantCardProps {
   restaurant: Restaurant;
   slots?: Slot[];
@@ -81,6 +89,8 @@ export default function RestaurantCard({
   const currentSizes = restaurant.partySizes ?? [restaurant.partySize];
   const [editName, setEditName] = useState(restaurant.name);
   const [editSizes, setEditSizes] = useState<number[]>(currentSizes);
+  const [editEarliest, setEditEarliest] = useState(restaurant.earliestTime ?? '');
+  const [editLatest, setEditLatest] = useState(restaurant.latestTime ?? '');
   const [saving, setSaving] = useState(false);
 
   const hasSlots = slots.length > 0;
@@ -102,13 +112,20 @@ export default function RestaurantCard({
       const res = await fetch(`/api/restaurants/${restaurant.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: editName.trim(), partySizes: editSizes }),
+        body: JSON.stringify({
+          name: editName.trim(),
+          partySizes: editSizes,
+          earliestTime: editEarliest || null,
+          latestTime: editLatest || null,
+        }),
       });
       if (res.ok) {
         onUpdate?.(restaurant.id, {
           name: editName.trim(),
           partySizes: editSizes,
           partySize: editSizes[0],
+          earliestTime: editEarliest || null,
+          latestTime: editLatest || null,
         });
         setEditing(false);
       }
@@ -188,7 +205,7 @@ export default function RestaurantCard({
       >
         {/* Edit */}
         <button
-          onClick={() => { setEditing((e) => !e); setEditName(restaurant.name); setEditSizes(currentSizes); }}
+          onClick={() => { setEditing((e) => !e); setEditName(restaurant.name); setEditSizes(currentSizes); setEditEarliest(restaurant.earliestTime ?? ''); setEditLatest(restaurant.latestTime ?? ''); }}
           aria-label="Edit restaurant"
           style={btnIcon}
           onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = 'var(--text)')}
@@ -272,6 +289,45 @@ export default function RestaurantCard({
               </button>
             ))}
           </div>
+          <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' }}>
+            Time Window <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: '0' }}>(leave blank for global)</span>
+          </p>
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '10px' }}>
+            <input
+              type="time"
+              value={editEarliest}
+              onChange={(e) => setEditEarliest(e.target.value)}
+              style={{
+                fontSize: '12px', padding: '5px 8px', border: '1px solid var(--border)',
+                background: 'var(--bg-muted)', color: 'var(--text)', fontFamily: 'var(--font-family-mono)',
+                outline: 'none',
+              }}
+            />
+            <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>–</span>
+            <input
+              type="time"
+              value={editLatest}
+              onChange={(e) => setEditLatest(e.target.value)}
+              style={{
+                fontSize: '12px', padding: '5px 8px', border: '1px solid var(--border)',
+                background: 'var(--bg-muted)', color: 'var(--text)', fontFamily: 'var(--font-family-mono)',
+                outline: 'none',
+              }}
+            />
+            {(editEarliest || editLatest) && (
+              <button
+                type="button"
+                onClick={() => { setEditEarliest(''); setEditLatest(''); }}
+                style={{
+                  fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
+                  padding: '4px 8px', background: 'none', color: 'var(--text-muted)',
+                  border: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'var(--font-family-sans)',
+                }}
+              >
+                Clear
+              </button>
+            )}
+          </div>
           <div style={{ display: 'flex', gap: '6px' }}>
             <button
               onClick={handleSave}
@@ -316,6 +372,11 @@ export default function RestaurantCard({
             {sizeLabel} · ID {restaurant.venueId} · Checked{' '}
             {formatRelativeTime(restaurant.lastChecked)}
           </p>
+          {restaurant.earliestTime && restaurant.latestTime && (
+            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '12px', marginTop: '-4px', fontWeight: 500 }}>
+              Custom window: {fmt12h(restaurant.earliestTime)}–{fmt12h(restaurant.latestTime)}
+            </p>
+          )}
         </>
       )}
 
