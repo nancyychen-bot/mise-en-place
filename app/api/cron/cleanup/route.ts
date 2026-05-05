@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { isAuthorized, unauthorizedResponse } from '@/lib/admin-auth';
 
 export const maxDuration = 30;
 
 async function handler(req: NextRequest) {
-  const auth = req.headers.get('authorization');
-  const secret = process.env.CRON_SECRET;
-
-  if (!secret || auth !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!isAuthorized(req)) return unauthorizedResponse();
 
   // Keep last 7 days of activity logs
   const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();

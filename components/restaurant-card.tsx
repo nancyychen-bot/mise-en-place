@@ -2,15 +2,8 @@
 
 import { useState } from 'react';
 import type { Restaurant, Slot } from '@/lib/types';
+import { fmt12h } from '@/lib/time-filter';
 import PlatformTag from './platform-tag';
-
-function fmt12h(time: string): string {
-  const [hStr, mStr] = time.split(':');
-  const h = parseInt(hStr, 10);
-  const suffix = h >= 12 ? 'PM' : 'AM';
-  const h12 = h % 12 || 12;
-  return `${h12}:${mStr} ${suffix}`;
-}
 
 interface RestaurantCardProps {
   restaurant: Restaurant;
@@ -39,7 +32,6 @@ function getBookingUrl(restaurant: Restaurant, slot?: Slot): string {
       ? `${base}?date=${slot.date}&party_size=${primarySize}`
       : base;
   } else {
-    // tock
     const base = `https://www.exploretock.com/${slug}`;
     return slot
       ? `${base}?date=${slot.date}&size=${primarySize}&time=${slot.time}`
@@ -70,6 +62,16 @@ const btnIcon: React.CSSProperties = {
   transition: 'color 0.15s',
 };
 
+const timeInputStyle: React.CSSProperties = {
+  fontSize: '12px',
+  padding: '5px 8px',
+  border: '1px solid var(--border)',
+  background: 'var(--bg-muted)',
+  color: 'var(--text)',
+  fontFamily: 'var(--font-family-mono)',
+  outline: 'none',
+};
+
 export default function RestaurantCard({
   restaurant,
   slots = [],
@@ -84,7 +86,6 @@ export default function RestaurantCard({
   const [idInput, setIdInput] = useState('');
   const [idError, setIdError] = useState('');
 
-  // Edit mode
   const [editing, setEditing] = useState(false);
   const currentSizes = restaurant.partySizes ?? [restaurant.partySize];
   const [editName, setEditName] = useState(restaurant.name);
@@ -99,6 +100,14 @@ export default function RestaurantCard({
   const sizeLabel = currentSizes.length === 1
     ? `${currentSizes[0]} ${currentSizes[0] === 1 ? 'guest' : 'guests'}`
     : `${currentSizes.join(' & ')} guests`;
+
+  function handleEditToggle() {
+    setEditing((e) => !e);
+    setEditName(restaurant.name);
+    setEditSizes(currentSizes);
+    setEditEarliest(restaurant.earliestTime ?? '');
+    setEditLatest(restaurant.latestTime ?? '');
+  }
 
   function toggleEditSize(n: number) {
     setEditSizes((prev) =>
@@ -192,7 +201,6 @@ export default function RestaurantCard({
         opacity: restaurant.active ? 1 : 0.55,
       }}
     >
-      {/* Card controls */}
       <div
         style={{
           position: 'absolute',
@@ -203,9 +211,8 @@ export default function RestaurantCard({
           alignItems: 'center',
         }}
       >
-        {/* Edit */}
         <button
-          onClick={() => { setEditing((e) => !e); setEditName(restaurant.name); setEditSizes(currentSizes); setEditEarliest(restaurant.earliestTime ?? ''); setEditLatest(restaurant.latestTime ?? ''); }}
+          onClick={handleEditToggle}
           aria-label="Edit restaurant"
           style={btnIcon}
           onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = 'var(--text)')}
@@ -216,7 +223,6 @@ export default function RestaurantCard({
           </svg>
         </button>
 
-        {/* Toggle */}
         <button
           onClick={handleToggle}
           disabled={toggling}
@@ -237,7 +243,6 @@ export default function RestaurantCard({
           />
         </button>
 
-        {/* Delete */}
         <button
           onClick={handleDelete}
           disabled={deleting}
@@ -297,22 +302,14 @@ export default function RestaurantCard({
               type="time"
               value={editEarliest}
               onChange={(e) => setEditEarliest(e.target.value)}
-              style={{
-                fontSize: '12px', padding: '5px 8px', border: '1px solid var(--border)',
-                background: 'var(--bg-muted)', color: 'var(--text)', fontFamily: 'var(--font-family-mono)',
-                outline: 'none',
-              }}
+              style={timeInputStyle}
             />
             <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>–</span>
             <input
               type="time"
               value={editLatest}
               onChange={(e) => setEditLatest(e.target.value)}
-              style={{
-                fontSize: '12px', padding: '5px 8px', border: '1px solid var(--border)',
-                background: 'var(--bg-muted)', color: 'var(--text)', fontFamily: 'var(--font-family-mono)',
-                outline: 'none',
-              }}
+              style={timeInputStyle}
             />
             {(editEarliest || editLatest) && (
               <button

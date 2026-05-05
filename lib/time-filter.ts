@@ -1,5 +1,13 @@
 import type { DaysOfWeek } from './types';
 
+export function fmt12h(time: string): string {
+  const [hStr, mStr] = time.split(':');
+  const h = parseInt(hStr, 10);
+  const suffix = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return `${h12}:${mStr} ${suffix}`;
+}
+
 /**
  * Returns true if slotTime (e.g. "19:00") falls within [earliest, latest] inclusive.
  */

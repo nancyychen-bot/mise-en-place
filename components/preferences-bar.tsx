@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { UserSettings } from '@/lib/types';
+import { fmt12h } from '@/lib/time-filter';
 
 interface PreferencesBarProps {
   settings: Pick<
@@ -8,14 +9,6 @@ interface PreferencesBarProps {
   >;
   watchingCount: number;
   slotsFoundCount: number;
-}
-
-function fmt12h(time: string): string {
-  const [hStr, mStr] = time.split(':');
-  const h = parseInt(hStr, 10);
-  const suffix = h >= 12 ? 'PM' : 'AM';
-  const h12 = h % 12 || 12;
-  return `${h12}:${mStr} ${suffix}`;
 }
 
 const DAYS_LABEL: Record<string, string> = {

@@ -1,17 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { checkUserWatchlist } from '@/lib/checker';
+import { isAuthorized, unauthorizedResponse } from '@/lib/admin-auth';
 
-export const maxDuration = 60; // seconds — Vercel Pro max for hobby/pro plans
+export const maxDuration = 60;
 
 async function handler(req: NextRequest) {
-  // Verify cron secret
-  const auth = req.headers.get('authorization');
-  const secret = process.env.CRON_SECRET;
-
-  if (!secret || auth !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!isAuthorized(req)) return unauthorizedResponse();
 
   // Find users who are due for a check right now.
   // Each user gets a stable offset derived from their user_id so checks are
