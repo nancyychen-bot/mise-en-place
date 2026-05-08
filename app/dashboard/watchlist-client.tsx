@@ -33,6 +33,7 @@ function normalizeRestaurant(r: any): Restaurant {
     createdAt: new Date(r.created_at),
     earliestTime: r.earliest_time ?? null,
     latestTime: r.latest_time ?? null,
+    dayRange: r.day_range ?? null,
   };
 }
 

@@ -41,6 +41,7 @@ export interface Restaurant {
   createdAt: Date;
   earliestTime: string | null;
   latestTime: string | null;
+  dayRange: number | null;
 }
 
 export interface Slot {

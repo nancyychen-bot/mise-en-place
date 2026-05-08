@@ -44,7 +44,7 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
   // Load active restaurants
   const { data: restaurants, error: restErr } = await db
     .from('restaurants')
-    .select('id, name, platform, venue_id, venue_slug, venue_city, party_size, party_sizes, available_slots, earliest_time, latest_time')
+    .select('id, name, platform, venue_id, venue_slug, venue_city, party_size, party_sizes, available_slots, earliest_time, latest_time, day_range')
     .eq('user_id', userId)
     .eq('active', true);
 
@@ -75,8 +75,11 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
 
         const effectiveEarliest = restaurant.earliest_time ?? settings.earliest_time;
         const effectiveLatest = restaurant.latest_time ?? settings.latest_time;
+        const effectiveDates = restaurant.day_range != null
+          ? getDateRange(restaurant.day_range, settings.days_of_week, tz)
+          : dates;
 
-        const combos = dates.flatMap(date => sizes.map(size => ({ date, size })));
+        const combos = effectiveDates.flatMap(date => sizes.map(size => ({ date, size })));
 
         const slotsByDate = await Promise.all(
           combos.map(async ({ date, size }) => {

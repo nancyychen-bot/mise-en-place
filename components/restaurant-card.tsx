@@ -92,6 +92,7 @@ export default function RestaurantCard({
   const [editSizes, setEditSizes] = useState<number[]>(currentSizes);
   const [editEarliest, setEditEarliest] = useState(restaurant.earliestTime ?? '');
   const [editLatest, setEditLatest] = useState(restaurant.latestTime ?? '');
+  const [editDayRange, setEditDayRange] = useState(restaurant.dayRange != null ? String(restaurant.dayRange) : '');
   const [saving, setSaving] = useState(false);
 
   const hasSlots = slots.length > 0;
@@ -107,6 +108,7 @@ export default function RestaurantCard({
     setEditSizes(currentSizes);
     setEditEarliest(restaurant.earliestTime ?? '');
     setEditLatest(restaurant.latestTime ?? '');
+    setEditDayRange(restaurant.dayRange != null ? String(restaurant.dayRange) : '');
   }
 
   function toggleEditSize(n: number) {
@@ -126,6 +128,7 @@ export default function RestaurantCard({
           partySizes: editSizes,
           earliestTime: editEarliest || null,
           latestTime: editLatest || null,
+          dayRange: editDayRange ? parseInt(editDayRange, 10) : null,
         }),
       });
       if (res.ok) {
@@ -135,6 +138,7 @@ export default function RestaurantCard({
           partySize: editSizes[0],
           earliestTime: editEarliest || null,
           latestTime: editLatest || null,
+          dayRange: editDayRange ? parseInt(editDayRange, 10) : null,
         });
         setEditing(false);
       }
@@ -228,7 +232,7 @@ export default function RestaurantCard({
           disabled={toggling}
           aria-label={restaurant.active ? 'Pause monitoring' : 'Resume monitoring'}
           style={{
-            width: '32px', height: '18px', borderRadius: '9px',
+            width: '44px', height: '26px', borderRadius: '13px',
             border: restaurant.active ? '1px solid var(--tag-green)' : '1px solid var(--border)',
             background: restaurant.active ? 'var(--tag-green)' : 'var(--bg)',
             cursor: 'pointer', position: 'relative', transition: 'all 0.2s', padding: 0,
@@ -236,9 +240,9 @@ export default function RestaurantCard({
         >
           <span
             style={{
-              position: 'absolute', width: '12px', height: '12px', borderRadius: '50%',
+              position: 'absolute', width: '18px', height: '18px', borderRadius: '50%',
               background: restaurant.active ? 'var(--bg)' : 'var(--text)',
-              top: '2px', left: restaurant.active ? '16px' : '2px', transition: 'all 0.2s',
+              top: '3px', left: restaurant.active ? '22px' : '3px', transition: 'all 0.2s',
             }}
           />
         </button>
@@ -325,6 +329,34 @@ export default function RestaurantCard({
               </button>
             )}
           </div>
+          <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' }}>
+            Days Ahead <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: '0' }}>(leave blank for global)</span>
+          </p>
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '10px' }}>
+            <input
+              type="number"
+              min={1}
+              max={60}
+              value={editDayRange}
+              onChange={(e) => setEditDayRange(e.target.value)}
+              placeholder="e.g. 7"
+              style={{ ...timeInputStyle, width: '70px' }}
+            />
+            <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>days</span>
+            {editDayRange && (
+              <button
+                type="button"
+                onClick={() => setEditDayRange('')}
+                style={{
+                  fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
+                  padding: '4px 8px', background: 'none', color: 'var(--text-muted)',
+                  border: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'var(--font-family-sans)',
+                }}
+              >
+                Clear
+              </button>
+            )}
+          </div>
           <div style={{ display: 'flex', gap: '6px' }}>
             <button
               onClick={handleSave}
@@ -369,9 +401,11 @@ export default function RestaurantCard({
             {sizeLabel} · ID {restaurant.venueId} · Checked{' '}
             {formatRelativeTime(restaurant.lastChecked)}
           </p>
-          {restaurant.earliestTime && restaurant.latestTime && (
+          {(restaurant.earliestTime && restaurant.latestTime || restaurant.dayRange != null) && (
             <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '12px', marginTop: '-4px', fontWeight: 500 }}>
-              Custom window: {fmt12h(restaurant.earliestTime)}–{fmt12h(restaurant.latestTime)}
+              {restaurant.earliestTime && restaurant.latestTime && `${fmt12h(restaurant.earliestTime)}–${fmt12h(restaurant.latestTime)}`}
+              {restaurant.earliestTime && restaurant.latestTime && restaurant.dayRange != null && ' · '}
+              {restaurant.dayRange != null && `${restaurant.dayRange} days ahead`}
             </p>
           )}
         </>

@@ -16,9 +16,9 @@ export default function Toggle({ checked, onChange, label, id }: ToggleProps) {
         aria-checked={checked}
         onClick={() => onChange(!checked)}
         style={{
-          width: '32px',
-          height: '18px',
-          borderRadius: '9px',
+          width: '44px',
+          height: '26px',
+          borderRadius: '13px',
           border: checked ? '1px solid var(--tag-green)' : '1px solid var(--border)',
           background: checked ? 'var(--tag-green)' : 'var(--bg)',
           cursor: 'pointer',
@@ -31,12 +31,12 @@ export default function Toggle({ checked, onChange, label, id }: ToggleProps) {
         <span
           style={{
             position: 'absolute',
-            width: '12px',
-            height: '12px',
+            width: '18px',
+            height: '18px',
             borderRadius: '50%',
             background: checked ? 'var(--bg)' : 'var(--text)',
-            top: '2px',
-            left: checked ? '16px' : '2px',
+            top: '3px',
+            left: checked ? '22px' : '3px',
             transition: 'all 0.2s',
           }}
         />
