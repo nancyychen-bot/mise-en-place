@@ -42,41 +42,30 @@ export async function findOpenTableAvailability(
   time: string,          // "19:00"
   partySize: number
 ): Promise<Slot[]> {
+  const base = process.env.NEXT_PUBLIC_APP_URL ?? 'https://mise-en-place-restaurants.vercel.app';
   const params = new URLSearchParams({
     rid: restaurantId,
-    restref: restaurantId,
     date,
-    time: `${time}:00`,
+    time,
     covers: String(partySize),
-    lang: 'en-US',
   });
 
-  const url = `https://www.opentable.com/restref/client/?${params}`;
-
-  const res = await fetch(url, {
-    headers: {
-      'User-Agent':
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-      Accept: 'application/json',
-      Referer: 'https://www.opentable.com/',
-    },
+  const res = await fetch(`${base}/api/opentable-availability?${params}`, {
     cache: 'no-store',
   });
 
   if (!res.ok) {
-    throw new Error(`http_${res.status}`);
-  }
-
-  const text = await res.text();
-  let data: unknown;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    throw new Error(`not_json: ${text.slice(0, 120)}`);
+    throw new Error(`proxy_http_${res.status}`);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const times: any[] = (data as any)?.availability?.times ?? (data as any)?.availableTimes ?? [];
+  const data = (await res.json()) as any;
+  if (data?.error) {
+    throw new Error(`ot_${data.error}${data.status ? '_' + data.status : ''}`);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const times: any[] = data?.times ?? [];
 
   return times.map((t) => {
     const rawTime: string = t?.time ?? t?.dateTime ?? '';
