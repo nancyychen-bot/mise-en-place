@@ -113,70 +113,93 @@ async function setDate(page, targetDate) {
   await page.waitForTimeout(500);
 }
 
-export async function scrapeOpenTable(restaurantId, date, partySize) {
+function extractSlots() {
+  const timeRegex = /^\s*(\d{1,2}:\d{2}\s*(?:AM|PM))\s*$/i;
+  const results = [];
+  for (const btn of document.querySelectorAll('button')) {
+    if (btn.closest('select')) continue;
+    const match = btn.textContent.trim().match(timeRegex);
+    if (match) results.push(match[1].trim());
+  }
+  return results;
+}
+
+function parseSlots(raw) {
+  const parsed = [];
+  const seen = new Set();
+  for (const r of raw) {
+    const displayTime = r.replace(/\s+/g, ' ').trim();
+    const match = displayTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if (!match) continue;
+    let [, hours, minutes, period] = match;
+    hours = parseInt(hours, 10);
+    if (period.toUpperCase() === 'PM' && hours !== 12) hours += 12;
+    if (period.toUpperCase() === 'AM' && hours === 12) hours = 0;
+    const t24 = `${String(hours).padStart(2, '0')}:${minutes}`;
+    if (seen.has(t24)) continue;
+    seen.add(t24);
+    parsed.push({ time: t24, displayTime });
+  }
+  parsed.sort((a, b) => a.time.localeCompare(b.time));
+  return parsed;
+}
+
+/**
+ * Scrape OpenTable availability for multiple dates in a single page session.
+ * Loads the page once, then flips through dates via the calendar picker.
+ *
+ * @returns {Map<string, Array<{time, displayTime}>>} date → slots
+ */
+export async function scrapeOpenTableMultiDate(restaurantId, dates, partySize) {
   const ctx = await launchBrowser();
   const page = await ctx.newPage();
+  const results = new Map();
 
   try {
-    const url = `https://www.opentable.com/booking/restref/availability?rid=${restaurantId}&restRef=${restaurantId}&partySize=${partySize}&date=${date}&time=19%3A00%3A00&lang=en-US`;
+    const firstDate = dates[0];
+    const url = `https://www.opentable.com/booking/restref/availability?rid=${restaurantId}&restRef=${restaurantId}&partySize=${partySize}&date=${firstDate}&time=19%3A00%3A00&lang=en-US`;
 
     let response;
     try {
       response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
     } catch (navErr) {
-      if (navErr.message.includes('ERR_HTTP2_PROTOCOL_ERROR')) return [];
+      if (navErr.message.includes('ERR_HTTP2_PROTOCOL_ERROR')) return results;
       throw navErr;
     }
+    if (response && response.status() >= 400) return results;
 
-    if (response && response.status() >= 400) return [];
+    try { await page.waitForLoadState('networkidle', { timeout: 15000 }); } catch {}
+    await page.waitForTimeout(1500);
 
-    try { await page.waitForLoadState('networkidle', { timeout: 20000 }); } catch {}
-    await page.waitForTimeout(2000);
+    for (const date of dates) {
+      try {
+        await setDate(page, date);
+        try { await page.selectOption('#party-size-picker', String(partySize)); } catch {}
 
-    try { await setDate(page, date); } catch {}
-    try { await page.selectOption('#party-size-picker', String(partySize)); } catch {}
+        const findTableBtn = page.getByRole('button', { name: /find a table/i });
+        if (await findTableBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+          await findTableBtn.click();
+          await page.waitForTimeout(3000);
+        }
 
-    const findTableBtn = page.getByRole('button', { name: /find a table/i });
-    if (await findTableBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await findTableBtn.click();
-      await page.waitForTimeout(5000);
-    }
+        const noAvail = await page.evaluate(() => {
+          const t = document.body.innerText;
+          return t.includes('no availability') || t.includes('No availability');
+        });
 
-    const noAvailability = await page.evaluate(() => {
-      const text = document.body.innerText;
-      return text.includes('no availability') || text.includes('No availability');
-    });
-    if (noAvailability) return [];
-
-    const slots = await page.evaluate(() => {
-      const timeRegex = /^\s*(\d{1,2}:\d{2}\s*(?:AM|PM))\s*$/i;
-      const results = [];
-      for (const btn of document.querySelectorAll('button')) {
-        if (btn.closest('select')) continue;
-        const match = btn.textContent.trim().match(timeRegex);
-        if (match) results.push(match[1].trim());
+        if (noAvail) {
+          results.set(date, []);
+        } else {
+          const raw = await page.evaluate(extractSlots);
+          results.set(date, parseSlots(raw));
+        }
+      } catch (err) {
+        console.error(`[scrape] error on ${date}:`, err.message);
+        results.set(date, []);
       }
-      return results;
-    });
-
-    const parsed = [];
-    const seen = new Set();
-    for (const raw of slots) {
-      const displayTime = raw.replace(/\s+/g, ' ').trim();
-      const match = displayTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-      if (!match) continue;
-      let [, hours, minutes, period] = match;
-      hours = parseInt(hours, 10);
-      if (period.toUpperCase() === 'PM' && hours !== 12) hours += 12;
-      if (period.toUpperCase() === 'AM' && hours === 12) hours = 0;
-      const t24 = `${String(hours).padStart(2, '0')}:${minutes}`;
-      if (seen.has(t24)) continue;
-      seen.add(t24);
-      parsed.push({ time: t24, displayTime });
     }
 
-    parsed.sort((a, b) => a.time.localeCompare(b.time));
-    return parsed;
+    return results;
   } catch (err) {
     try { await page.screenshot({ path: '/tmp/opentable-debug.png' }); } catch {}
     throw err;

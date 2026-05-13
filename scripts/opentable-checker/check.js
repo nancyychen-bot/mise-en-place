@@ -2,7 +2,7 @@ import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { createClient } from '@supabase/supabase-js';
-import { launchBrowser, closeBrowser, scrapeOpenTable } from './scrape.js';
+import { launchBrowser, closeBrowser, scrapeOpenTableMultiDate } from './scrape.js';
 
 // ── Load .env manually ──────────────────────────────────────────────
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -129,20 +129,18 @@ async function main() {
 
     const allSlots = [];
 
-    for (const date of dates) {
-      for (const size of sizes) {
-        try {
-          const slots = await scrapeOpenTable(restaurant.venue_id, date, size);
+    for (const size of sizes) {
+      try {
+        const slotsByDate = await scrapeOpenTableMultiDate(restaurant.venue_id, dates, size);
+        for (const [date, slots] of slotsByDate) {
           for (const slot of slots) {
-            // Filter by time window
             if (effectiveEarliest && slot.time < effectiveEarliest) continue;
             if (effectiveLatest && slot.time > effectiveLatest) continue;
             allSlots.push({ date, time: slot.time, displayTime: slot.displayTime });
           }
-        } catch (err) {
-          console.error(`[check] error scraping ${restaurant.name} date=${date} size=${size}:`, err.message);
-          // Continue to next combo
         }
+      } catch (err) {
+        console.error(`[check] error scraping ${restaurant.name} size=${size}:`, err.message);
       }
     }
 
