@@ -2,8 +2,12 @@ name: OpenTable Checker
 
 on:
   schedule:
-    - cron: '*/15 12-23,0-2 * * *'  # Every 15 min during 8am-10pm EDT
+    - cron: '*/5 12-23,0-2 * * *'  # Every 5 min during 8am-10pm EDT
   workflow_dispatch: {}
+
+concurrency:
+  group: opentable-checker
+  cancel-in-progress: false
 
 jobs:
   check:

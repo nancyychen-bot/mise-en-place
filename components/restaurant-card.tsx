@@ -219,6 +219,9 @@ export default function RestaurantCard({
           alignItems: 'center',
         }}
       >
+        <span style={{ fontSize: '9px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+          customize
+        </span>
         <button
           onClick={handleEditToggle}
           aria-label="Edit restaurant"
