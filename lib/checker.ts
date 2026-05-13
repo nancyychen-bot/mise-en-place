@@ -112,7 +112,6 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
         // Collect all in-window slots and find which are new (not previously notified)
         const allSlotsInWindow: Slot[] = [];
         const newSlots: Slot[] = [];
-        const totalRawSlots = slotsByDate.reduce((n, s) => n + s.length, 0);
 
         for (const slots of slotsByDate) {
           for (const slot of slots) {
@@ -122,11 +121,6 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
               newSlots.push(slot);
             }
           }
-        }
-
-        if (totalRawSlots > 0 || allSlotsInWindow.length !== totalRawSlots) {
-          const sampleTimes = slotsByDate.flat().slice(0, 5).map(s => s.time).join(',');
-          console.error(`[checker] ${restaurant.name}: ${totalRawSlots} raw → ${allSlotsInWindow.length} in window [${effectiveEarliest}–${effectiveLatest}] samples: ${sampleTimes}`);
         }
 
         // Save ALL current slots for display + dedup on next run
@@ -140,19 +134,16 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
           console.error(`[checker] failed to save available_slots for ${restaurant.id}:`, updateErr.message);
         }
 
-        const diagParts = [`Checked <strong>${restaurant.name}</strong> — ${allSlotsInWindow.length} slot(s) available, ${newSlots.length} new (prev: ${prevSlots.length})`];
-        if (totalRawSlots > 0 || fetchError) {
-          diagParts.push(`[raw: ${totalRawSlots}, window: ${effectiveEarliest}–${effectiveLatest}]`);
-        }
+        let checkMsg = `Checked <strong>${restaurant.name}</strong> — ${allSlotsInWindow.length} slot(s) available, ${newSlots.length} new (prev: ${prevSlots.length})`;
         if (fetchError) {
-          diagParts.push(`[err: ${fetchError}]`);
+          checkMsg += ` [err: ${fetchError}]`;
         }
 
         await db.from('activity_log').insert({
           user_id: userId,
           restaurant_id: restaurant.id,
           type: 'check',
-          message: diagParts.join(' '),
+          message: checkMsg,
         });
 
         if (newSlots.length > 0) {
