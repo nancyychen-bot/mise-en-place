@@ -2,23 +2,31 @@ name: OpenTable Checker
 
 on:
   schedule:
-    - cron: '0 12-23,0-2 * * *'  # Every hour during 8am-10pm EDT (12-02 UTC)
-  workflow_dispatch: {}         # Manual trigger from GitHub UI
+    - cron: '*/30 12-23,0-2 * * *'  # Every 30 min during 8am-10pm EDT
+  workflow_dispatch: {}
 
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: scripts/opentable-checker/package-lock.json
 
       - name: Install dependencies
         working-directory: scripts/opentable-checker
         run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('scripts/opentable-checker/package-lock.json') }}
 
       - name: Install Playwright browsers
         working-directory: scripts/opentable-checker
