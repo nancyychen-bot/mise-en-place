@@ -21,7 +21,11 @@ export async function launchBrowser() {
     context = await chromium.launchPersistentContext(userDataDir, {
       channel: 'chrome',
       headless: false,
-      args: ['--disable-blink-features=AutomationControlled'],
+      args: [
+        '--disable-blink-features=AutomationControlled',
+        '--window-position=-32000,-32000',
+        '--window-size=800,600',
+      ],
       viewport: { width: 1280, height: 800 },
       locale: 'en-US',
       timezoneId: 'America/New_York',
