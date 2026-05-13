@@ -121,7 +121,7 @@ async function main() {
     const tz = settings.timezone ?? 'America/New_York';
     const effectiveEarliest = restaurant.earliest_time || settings.earliest_time;
     const effectiveLatest = restaurant.latest_time || settings.latest_time;
-    const dayRange = restaurant.day_range ?? settings.day_range ?? 14;
+    const dayRange = Math.min(restaurant.day_range ?? settings.day_range ?? 14, 5);
     const sizes = Array.isArray(restaurant.party_sizes) && restaurant.party_sizes.length > 0
       ? restaurant.party_sizes
       : [restaurant.party_size];

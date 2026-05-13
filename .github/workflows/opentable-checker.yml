@@ -2,13 +2,13 @@ name: OpenTable Checker
 
 on:
   schedule:
-    - cron: '*/15 12-23,0-2 * * *'  # Every 15 min during 8am-10pm EDT (12-02 UTC)
+    - cron: '0 12-23,0-2 * * *'  # Every hour during 8am-10pm EDT (12-02 UTC)
   workflow_dispatch: {}         # Manual trigger from GitHub UI
 
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
