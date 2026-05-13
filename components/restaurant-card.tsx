@@ -92,7 +92,8 @@ export default function RestaurantCard({
   const [editSizes, setEditSizes] = useState<number[]>(currentSizes);
   const [editEarliest, setEditEarliest] = useState(restaurant.earliestTime ?? '');
   const [editLatest, setEditLatest] = useState(restaurant.latestTime ?? '');
-  const [editDayRange, setEditDayRange] = useState(restaurant.dayRange != null ? String(restaurant.dayRange) : '');
+  const [editDateStart, setEditDateStart] = useState(restaurant.dateStart ?? '');
+  const [editDateEnd, setEditDateEnd] = useState(restaurant.dateEnd ?? '');
   const [saving, setSaving] = useState(false);
 
   const hasSlots = slots.length > 0;
@@ -108,7 +109,8 @@ export default function RestaurantCard({
     setEditSizes(currentSizes);
     setEditEarliest(restaurant.earliestTime ?? '');
     setEditLatest(restaurant.latestTime ?? '');
-    setEditDayRange(restaurant.dayRange != null ? String(restaurant.dayRange) : '');
+    setEditDateStart(restaurant.dateStart ?? '');
+    setEditDateEnd(restaurant.dateEnd ?? '');
   }
 
   function toggleEditSize(n: number) {
@@ -128,7 +130,8 @@ export default function RestaurantCard({
           partySizes: editSizes,
           earliestTime: editEarliest || null,
           latestTime: editLatest || null,
-          dayRange: editDayRange ? parseInt(editDayRange, 10) : null,
+          dateStart: editDateStart || null,
+          dateEnd: editDateEnd || null,
         }),
       });
       if (res.ok) {
@@ -138,7 +141,8 @@ export default function RestaurantCard({
           partySize: editSizes[0],
           earliestTime: editEarliest || null,
           latestTime: editLatest || null,
-          dayRange: editDayRange ? parseInt(editDayRange, 10) : null,
+          dateStart: editDateStart || null,
+          dateEnd: editDateEnd || null,
         });
         setEditing(false);
       }
@@ -330,23 +334,26 @@ export default function RestaurantCard({
             )}
           </div>
           <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' }}>
-            Days Ahead <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: '0' }}>(leave blank for global)</span>
+            Date Range <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: '0' }}>(leave blank for global)</span>
           </p>
           <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '10px' }}>
             <input
-              type="number"
-              min={1}
-              max={60}
-              value={editDayRange}
-              onChange={(e) => setEditDayRange(e.target.value)}
-              placeholder="e.g. 7"
-              style={{ ...timeInputStyle, width: '70px' }}
+              type="date"
+              value={editDateStart}
+              onChange={(e) => setEditDateStart(e.target.value)}
+              style={timeInputStyle}
             />
-            <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>days</span>
-            {editDayRange && (
+            <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>–</span>
+            <input
+              type="date"
+              value={editDateEnd}
+              onChange={(e) => setEditDateEnd(e.target.value)}
+              style={timeInputStyle}
+            />
+            {(editDateStart || editDateEnd) && (
               <button
                 type="button"
-                onClick={() => setEditDayRange('')}
+                onClick={() => { setEditDateStart(''); setEditDateEnd(''); }}
                 style={{
                   fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
                   padding: '4px 8px', background: 'none', color: 'var(--text-muted)',
@@ -401,11 +408,11 @@ export default function RestaurantCard({
             {sizeLabel} · ID {restaurant.venueId} · Checked{' '}
             {formatRelativeTime(restaurant.lastChecked)}
           </p>
-          {(restaurant.earliestTime && restaurant.latestTime || restaurant.dayRange != null) && (
+          {(restaurant.earliestTime && restaurant.latestTime || restaurant.dateStart && restaurant.dateEnd) && (
             <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '12px', marginTop: '-4px', fontWeight: 500 }}>
               {restaurant.earliestTime && restaurant.latestTime && `${fmt12h(restaurant.earliestTime)}–${fmt12h(restaurant.latestTime)}`}
-              {restaurant.earliestTime && restaurant.latestTime && restaurant.dayRange != null && ' · '}
-              {restaurant.dayRange != null && `${restaurant.dayRange} days ahead`}
+              {restaurant.earliestTime && restaurant.latestTime && restaurant.dateStart && restaurant.dateEnd && ' · '}
+              {restaurant.dateStart && restaurant.dateEnd && `${restaurant.dateStart.slice(5).replace('-', '/')}–${restaurant.dateEnd.slice(5).replace('-', '/')}`}
             </p>
           )}
         </>

@@ -64,7 +64,7 @@ async function main() {
   // 1. Load ALL active OpenTable restaurants across all users
   const { data: restaurants, error: restErr } = await db
     .from('restaurants')
-    .select('id, user_id, name, venue_id, party_size, party_sizes, earliest_time, latest_time, day_range')
+    .select('id, user_id, name, venue_id, party_size, party_sizes, earliest_time, latest_time, day_range, date_start, date_end')
     .eq('platform', 'opentable')
     .eq('active', true);
 
@@ -124,11 +124,22 @@ async function main() {
     const tz = settings.timezone ?? 'America/New_York';
     const effectiveEarliest = restaurant.earliest_time || settings.earliest_time;
     const effectiveLatest = restaurant.latest_time || settings.latest_time;
-    const dayRange = Math.min(restaurant.day_range ?? settings.day_range ?? 14, 3);
     const sizes = Array.isArray(restaurant.party_sizes) && restaurant.party_sizes.length > 0
       ? restaurant.party_sizes
       : [restaurant.party_size];
-    const dates = getDateRange(dayRange, tz);
+
+    let dates;
+    if (restaurant.date_start && restaurant.date_end) {
+      dates = [];
+      const start = new Date(`${restaurant.date_start}T00:00:00`);
+      const end = new Date(`${restaurant.date_end}T00:00:00`);
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        dates.push(d.toISOString().slice(0, 10));
+      }
+    } else {
+      const dayRange = Math.min(restaurant.day_range ?? settings.day_range ?? 14, 3);
+      dates = getDateRange(dayRange, tz);
+    }
 
     const allSlots = [];
 

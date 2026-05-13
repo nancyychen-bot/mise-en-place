@@ -13,6 +13,8 @@ const PatchSchema = z.object({
   earliestTime: z.string().regex(timeRe).nullable().optional(),
   latestTime: z.string().regex(timeRe).nullable().optional(),
   dayRange: z.number().int().min(1).max(60).nullable().optional(),
+  dateStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  dateEnd: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
 });
 
 type Params = { params: Promise<{ id: string }> };
@@ -46,6 +48,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (parsed.data.earliestTime !== undefined) updates.earliest_time = parsed.data.earliestTime;
   if (parsed.data.latestTime !== undefined) updates.latest_time = parsed.data.latestTime;
   if (parsed.data.dayRange !== undefined) updates.day_range = parsed.data.dayRange;
+  if (parsed.data.dateStart !== undefined) updates.date_start = parsed.data.dateStart;
+  if (parsed.data.dateEnd !== undefined) updates.date_end = parsed.data.dateEnd;
 
   const { data, error } = await db
     .from('restaurants')

@@ -44,7 +44,7 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
   // Load active restaurants
   const { data: restaurants, error: restErr } = await db
     .from('restaurants')
-    .select('id, name, platform, venue_id, venue_slug, venue_city, party_size, party_sizes, available_slots, earliest_time, latest_time, day_range')
+    .select('id, name, platform, venue_id, venue_slug, venue_city, party_size, party_sizes, available_slots, earliest_time, latest_time, day_range, date_start, date_end')
     .eq('user_id', userId)
     .eq('active', true);
 
@@ -75,9 +75,19 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
 
         const effectiveEarliest = restaurant.earliest_time ?? settings.earliest_time;
         const effectiveLatest = restaurant.latest_time ?? settings.latest_time;
-        const effectiveDates = restaurant.day_range != null
-          ? getDateRange(restaurant.day_range, settings.days_of_week, tz)
-          : dates;
+        let effectiveDates: string[];
+        if (restaurant.date_start && restaurant.date_end) {
+          effectiveDates = [];
+          const start = new Date(`${restaurant.date_start}T00:00:00`);
+          const end = new Date(`${restaurant.date_end}T00:00:00`);
+          for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            effectiveDates.push(d.toISOString().slice(0, 10));
+          }
+        } else if (restaurant.day_range != null) {
+          effectiveDates = getDateRange(restaurant.day_range, settings.days_of_week, tz);
+        } else {
+          effectiveDates = dates;
+        }
 
         const combos = effectiveDates.flatMap(date => sizes.map(size => ({ date, size })));
 

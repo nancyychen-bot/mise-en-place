@@ -42,6 +42,8 @@ export interface Restaurant {
   earliestTime: string | null;
   latestTime: string | null;
   dayRange: number | null;
+  dateStart: string | null;  // "YYYY-MM-DD"
+  dateEnd: string | null;    // "YYYY-MM-DD"
 }
 
 export interface Slot {
