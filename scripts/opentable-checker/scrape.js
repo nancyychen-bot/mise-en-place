@@ -68,8 +68,10 @@ async function setDate(page, targetDate) {
   const targetMonthYear = `${monthName(month)} ${year}`;
 
   const dateSelector = page.locator('[aria-label="Date selector"]');
+  const hasDateSelector = await dateSelector.isVisible({ timeout: 3000 }).catch(() => false);
+  if (!hasDateSelector) throw new Error('no date selector found');
   await dateSelector.click();
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(800);
 
   for (let attempts = 0; attempts < 24; attempts++) {
     const caption = await page.locator('.rdp-caption').textContent().catch(() => '');
@@ -95,19 +97,18 @@ async function setDate(page, targetDate) {
 
   const dayButton = page.locator(`.rdp-day:not(.rdp-day_outside) >> text="${day}"`).first();
   try {
-    await dayButton.click({ timeout: 3000 });
+    await dayButton.click({ timeout: 5000 });
   } catch {
     const clicked = await page.evaluate((d) => {
-      for (const btn of document.querySelectorAll('.rdp-day button, .rdp button, [role="gridcell"] button')) {
-        if (btn.textContent.trim() === String(d) && !btn.disabled) { btn.click(); return true; }
-      }
-      for (const btn of document.querySelectorAll('button')) {
-        if (btn.textContent.trim() === String(d) && btn.closest('.rdp, [class*="calendar" i]')) { btn.click(); return true; }
+      // Try calendar-specific buttons first
+      for (const btn of document.querySelectorAll('.rdp-day, .rdp-day button, .rdp button, [role="gridcell"], [role="gridcell"] button, td button')) {
+        const text = (btn.textContent || '').trim();
+        if (text === String(d) && !btn.disabled && !btn.closest('.rdp-day_outside')) { btn.click(); return true; }
       }
       return false;
     }, day);
     if (!clicked) {
-      await page.locator(`button:has-text("${day}")`).first().click({ timeout: 3000 });
+      console.error(`[scrape] could not click day ${day} in calendar`);
     }
   }
   await page.waitForTimeout(500);
@@ -173,27 +174,39 @@ export async function scrapeOpenTableMultiDate(restaurantId, dates, partySize) {
 
     for (const date of dates) {
       try {
+        // Reload page with date in URL (OpenTable may or may not respect it)
         const dateUrl = `https://www.opentable.com/booking/restref/availability?rid=${restaurantId}&restRef=${restaurantId}&partySize=${partySize}&date=${date}&time=19%3A00%3A00&lang=en-US`;
         await page.goto(dateUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
         try { await page.waitForLoadState('networkidle', { timeout: 10000 }); } catch {}
-        await page.waitForTimeout(1500);
+        await page.waitForTimeout(2000);
 
-        const findTableBtn = page.getByRole('button', { name: /find a table/i });
-        if (await findTableBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-          await findTableBtn.click();
-          await page.waitForTimeout(3000);
+        // Navigate the calendar to the correct date (URL param is often ignored)
+        try {
+          await setDate(page, date);
+        } catch (calErr) {
+          console.error(`[scrape] calendar nav failed for ${date}:`, calErr.message);
         }
 
-        const noAvail = await page.evaluate(() => {
-          const t = document.body.innerText;
-          return t.includes('no availability') || t.includes('No availability');
-        });
+        try { await page.selectOption('#party-size-picker', String(partySize)); } catch {}
+
+        const findTableBtn = page.getByRole('button', { name: /find a table/i });
+        const hasFindTable = await findTableBtn.isVisible({ timeout: 5000 }).catch(() => false);
+        if (hasFindTable) {
+          await findTableBtn.click();
+          await page.waitForTimeout(4000);
+        }
+
+        const bodyText = await page.evaluate(() => document.body.innerText.slice(0, 300));
+        const noAvail = bodyText.includes('no availability') || bodyText.includes('No availability');
 
         if (noAvail) {
+          console.log(`[scrape] ${date}: no availability`);
           results.set(date, []);
         } else {
           const raw = await page.evaluate(extractSlots);
-          results.set(date, parseSlots(raw));
+          const parsed = parseSlots(raw);
+          console.log(`[scrape] ${date}: ${parsed.length} slot(s) — ${parsed.map(s => s.displayTime).join(', ')}`);
+          results.set(date, parsed);
         }
       } catch (err) {
         console.error(`[scrape] error on ${date}:`, err.message);
