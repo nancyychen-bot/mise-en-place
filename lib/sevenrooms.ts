@@ -25,10 +25,6 @@ export function parseSevenRoomsVenueInput(input: string): string {
   return trimmed;
 }
 
-/**
- * SevenRooms availability via their public widget API.
- * Uses the same endpoint their embeddable reservation widget calls.
- */
 export async function findSevenRoomsAvailability(
   venueSlug: string,
   date: string,       // "YYYY-MM-DD"
@@ -36,13 +32,15 @@ export async function findSevenRoomsAvailability(
 ): Promise<Slot[]> {
   const params = new URLSearchParams({
     venue: venueSlug,
-    date,
+    start_date: date,
+    num_days: '1',
     party_size: String(partySize),
     channel: 'SEVENROOMS_WIDGET',
-    duration: '0',
+    halo_size_interval: '100',
+    exclude_pdr: 'true',
   });
 
-  const url = `https://www.sevenrooms.com/api-yoa/availability/widget/get?${params}`;
+  const url = `https://www.sevenrooms.com/api-yoa/availability/ng/widget/range?${params}`;
 
   const res = await fetch(url, {
     headers: {
@@ -66,24 +64,30 @@ export async function findSevenRoomsAvailability(
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if ((data as any)?.status !== 1) return [];
+  const d = data as any;
+  if (d?.status !== 200) return [];
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rawSlots: any[] =
-    (data as any)?.payload?.time_slots ??
-    (data as any)?.payload?.availability?.time_slots ??
-    [];
+  // Response: { data: { availability: { "2026-05-15": [{ times: [...] }] } } }
+  const availability = d?.data?.availability ?? {};
+  const shifts = availability[date] ?? [];
 
-    return rawSlots.flatMap((s) => {
-      // Time might be "7:00 PM" or a 24h string like "19:00"
-      const rawTime: string = s?.time_slot ?? s?.time ?? s?.real_datetime_of_slot ?? '';
-      if (!rawTime) return [];
+  const slots: Slot[] = [];
+
+  for (const shift of shifts) {
+    if (shift?.is_closed || shift?.is_blackout) continue;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const times: any[] = shift?.times ?? [];
+
+    for (const t of times) {
+      const rawTime: string = t?.time ?? '';
+      const rawIso: string = t?.time_iso ?? '';
+      if (!rawTime && !rawIso) continue;
 
       let time24: string;
       let displayTime: string;
 
       if (/^\d{1,2}:\d{2}\s*(AM|PM)$/i.test(rawTime)) {
-        // Already in 12h format like "7:00 PM"
         displayTime = rawTime.toUpperCase();
         const [timePart, meridiem] = rawTime.split(/\s+/);
         const [hStr, mStr] = timePart.split(':');
@@ -91,26 +95,26 @@ export async function findSevenRoomsAvailability(
         if (meridiem.toUpperCase() === 'PM' && h !== 12) h += 12;
         if (meridiem.toUpperCase() === 'AM' && h === 12) h = 0;
         time24 = `${String(h).padStart(2, '0')}:${mStr}`;
-      } else {
-        // "19:00" or "2026-04-22 19:00:00"
-        const timePart = rawTime.includes('T')
-          ? rawTime.split('T')[1].substring(0, 5)
-          : rawTime.includes(' ') && rawTime.length > 10
-          ? rawTime.split(' ')[1].substring(0, 5)
-          : rawTime.substring(0, 5);
+      } else if (rawIso) {
+        // "2026-05-13 17:00:00"
+        const timePart = rawIso.split(' ')[1]?.substring(0, 5) ?? '';
         time24 = timePart;
         const [hStr, mStr] = timePart.split(':');
         const h = parseInt(hStr, 10);
         const suffix = h >= 12 ? 'PM' : 'AM';
-        const h12 = h % 12 || 12;
-        displayTime = `${h12}:${mStr} ${suffix}`;
+        displayTime = `${h % 12 || 12}:${mStr} ${suffix}`;
+      } else {
+        continue;
       }
 
-      return [{
+      slots.push({
         date,
         time: time24,
         displayTime,
-        bookingToken: s?.access_persistent_id ?? undefined,
-      }];
-    });
+        bookingToken: t?.access_persistent_id ?? undefined,
+      });
+    }
+  }
+
+  return slots;
 }
