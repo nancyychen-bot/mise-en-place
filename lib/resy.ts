@@ -39,11 +39,10 @@ export async function findResyAvailability(
         'X-Origin': 'https://resy.com',
         Referer: 'https://resy.com/',
       },
-      next: { revalidate: 0 },
+      cache: 'no-store',
     });
   } catch (err) {
-    console.error('[resy] fetch error:', err);
-    return [];
+    throw new Error(`fetch_err: ${err instanceof Error ? err.message : String(err)}`);
   }
 
   if (res.status === 401 || res.status === 403) {
@@ -51,14 +50,15 @@ export async function findResyAvailability(
   }
 
   if (res.status === 404 || !res.ok) {
-    return [];
+    throw new Error(`http_${res.status}`);
   }
 
+  const text = await res.text();
   let json: unknown;
   try {
-    json = await res.json();
+    json = JSON.parse(text);
   } catch {
-    return [];
+    throw new Error(`not_json: ${text.slice(0, 120)}`);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

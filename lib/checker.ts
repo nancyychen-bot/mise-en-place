@@ -55,7 +55,7 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
   const dates = getDateRange(settings.day_range, settings.days_of_week, tz);
 
   const withTimeout = <T>(p: Promise<T>): Promise<T> =>
-    Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error('timeout')), 6000))]);
+    Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error('timeout')), 12000))]);
 
   const results: CheckResult[] = await Promise.all(
     restaurants.map(async (restaurant) => {

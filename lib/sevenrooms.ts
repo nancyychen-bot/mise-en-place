@@ -44,28 +44,35 @@ export async function findSevenRoomsAvailability(
 
   const url = `https://www.sevenrooms.com/api-yoa/availability/widget/get?${params}`;
 
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+      Accept: 'application/json',
+      Referer: 'https://www.sevenrooms.com/',
+    },
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    throw new Error(`http_${res.status}`);
+  }
+
+  const rawText = await res.text();
+  let data: unknown;
   try {
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-        Accept: 'application/json',
-        Referer: 'https://www.sevenrooms.com/',
-      },
-      next: { revalidate: 0 },
-    });
+    data = JSON.parse(rawText);
+  } catch {
+    throw new Error(`not_json: ${rawText.slice(0, 120)}`);
+  }
 
-    if (!res.ok) return [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if ((data as any)?.status !== 1) return [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = (await res.json()) as any;
-
-    if (data?.status !== 1) return [];
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rawSlots: any[] =
-      data?.payload?.time_slots ??
-      data?.payload?.availability?.time_slots ??
-      [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rawSlots: any[] =
+    (data as any)?.payload?.time_slots ??
+    (data as any)?.payload?.availability?.time_slots ??
+    [];
 
     return rawSlots.flatMap((s) => {
       // Time might be "7:00 PM" or a 24h string like "19:00"
@@ -106,8 +113,4 @@ export async function findSevenRoomsAvailability(
         bookingToken: s?.access_persistent_id ?? undefined,
       }];
     });
-  } catch (err) {
-    console.error('[sevenrooms] error:', err);
-    return [];
-  }
 }

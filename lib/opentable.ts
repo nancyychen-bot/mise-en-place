@@ -53,48 +53,49 @@ export async function findOpenTableAvailability(
 
   const url = `https://www.opentable.com/restref/client/?${params}`;
 
-  try {
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-        Accept: 'application/json',
-        Referer: 'https://www.opentable.com/',
-      },
-      next: { revalidate: 0 },
-    });
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent':
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+      Accept: 'application/json',
+      Referer: 'https://www.opentable.com/',
+    },
+    cache: 'no-store',
+  });
 
-    if (!res.ok) return [];
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = (await res.json()) as any;
-
-    // OpenTable returns availableTimes array
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const times: any[] = data?.availability?.times ?? data?.availableTimes ?? [];
-
-    return times.map((t) => {
-      const rawTime: string = t?.time ?? t?.dateTime ?? '';
-      // rawTime might be "19:00" or ISO "2026-04-22T19:00:00"
-      const timePart = rawTime.includes('T')
-        ? rawTime.split('T')[1].substring(0, 5)
-        : rawTime.substring(0, 5);
-
-      const [hStr, mStr] = timePart.split(':');
-      const h = parseInt(hStr, 10);
-      const m = mStr ?? '00';
-      const suffix = h >= 12 ? 'PM' : 'AM';
-      const h12 = h % 12 || 12;
-
-      return {
-        date,
-        time: timePart,
-        displayTime: `${h12}:${m} ${suffix}`,
-        bookingToken: t?.hash ?? undefined,
-      };
-    });
-  } catch (err) {
-    console.error('[opentable] error:', err);
-    return [];
+  if (!res.ok) {
+    throw new Error(`http_${res.status}`);
   }
+
+  const text = await res.text();
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error(`not_json: ${text.slice(0, 120)}`);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const times: any[] = (data as any)?.availability?.times ?? (data as any)?.availableTimes ?? [];
+
+  return times.map((t) => {
+    const rawTime: string = t?.time ?? t?.dateTime ?? '';
+    // rawTime might be "19:00" or ISO "2026-04-22T19:00:00"
+    const timePart = rawTime.includes('T')
+      ? rawTime.split('T')[1].substring(0, 5)
+      : rawTime.substring(0, 5);
+
+    const [hStr, mStr] = timePart.split(':');
+    const h = parseInt(hStr, 10);
+    const m = mStr ?? '00';
+    const suffix = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+
+    return {
+      date,
+      time: timePart,
+      displayTime: `${h12}:${m} ${suffix}`,
+      bookingToken: t?.hash ?? undefined,
+    };
+  });
 }
