@@ -64,7 +64,9 @@ export async function findResyAvailability(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const data = json as any;
   const venues = data?.results?.venues;
-  if (!Array.isArray(venues) || venues.length === 0) return [];
+  if (!Array.isArray(venues) || venues.length === 0) {
+    throw new Error(`empty_venues: ${text.slice(0, 200)}`);
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rawSlots: any[] = venues[0]?.slots ?? [];
