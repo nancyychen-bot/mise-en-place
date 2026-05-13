@@ -2,7 +2,7 @@ name: OpenTable Checker
 
 on:
   schedule:
-    - cron: '*/30 12-23,0-2 * * *'  # Every 30 min during 8am-10pm EDT
+    - cron: '0 12-23,0-2 * * *'  # Every hour during 8am-10pm EDT
   workflow_dispatch: {}
 
 jobs:
