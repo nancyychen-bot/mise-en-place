@@ -81,24 +81,29 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
 
         const combos = effectiveDates.flatMap(date => sizes.map(size => ({ date, size })));
 
+        let fetchError = '';
         const slotsByDate = await Promise.all(
           combos.map(async ({ date, size }) => {
             let slots: Slot[] = [];
-            if (restaurant.platform === 'resy') {
-              if (!apiKey) return [];
-              slots = await withTimeout(findResyAvailability(apiKey, restaurant.venue_id, date, size)).catch(() => []);
-            } else if (restaurant.platform === 'opentable') {
-              slots = await withTimeout(findOpenTableAvailability(
-                restaurant.venue_id, date, effectiveEarliest, size
-              )).catch(() => []);
-            } else if (restaurant.platform === 'sevenrooms') {
-              slots = await withTimeout(findSevenRoomsAvailability(
-                restaurant.venue_id, date, size
-              )).catch(() => []);
-            } else if (restaurant.platform === 'tock') {
-              slots = await withTimeout(findTockAvailability(
-                restaurant.venue_id, date, effectiveEarliest, size
-              )).catch(() => []);
+            try {
+              if (restaurant.platform === 'resy') {
+                if (!apiKey) return [];
+                slots = await withTimeout(findResyAvailability(apiKey, restaurant.venue_id, date, size));
+              } else if (restaurant.platform === 'opentable') {
+                slots = await withTimeout(findOpenTableAvailability(
+                  restaurant.venue_id, date, effectiveEarliest, size
+                ));
+              } else if (restaurant.platform === 'sevenrooms') {
+                slots = await withTimeout(findSevenRoomsAvailability(
+                  restaurant.venue_id, date, size
+                ));
+              } else if (restaurant.platform === 'tock') {
+                slots = await withTimeout(findTockAvailability(
+                  restaurant.venue_id, date, effectiveEarliest, size
+                ));
+              }
+            } catch (err) {
+              if (!fetchError) fetchError = `${date}/${size}: ${err instanceof Error ? err.message : String(err)}`;
             }
             return slots;
           })
@@ -107,6 +112,7 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
         // Collect all in-window slots and find which are new (not previously notified)
         const allSlotsInWindow: Slot[] = [];
         const newSlots: Slot[] = [];
+        const totalRawSlots = slotsByDate.reduce((n, s) => n + s.length, 0);
 
         for (const slots of slotsByDate) {
           for (const slot of slots) {
@@ -116,6 +122,11 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
               newSlots.push(slot);
             }
           }
+        }
+
+        if (totalRawSlots > 0 || allSlotsInWindow.length !== totalRawSlots) {
+          const sampleTimes = slotsByDate.flat().slice(0, 5).map(s => s.time).join(',');
+          console.error(`[checker] ${restaurant.name}: ${totalRawSlots} raw → ${allSlotsInWindow.length} in window [${effectiveEarliest}–${effectiveLatest}] samples: ${sampleTimes}`);
         }
 
         // Save ALL current slots for display + dedup on next run
@@ -129,11 +140,19 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
           console.error(`[checker] failed to save available_slots for ${restaurant.id}:`, updateErr.message);
         }
 
+        const diagParts = [`Checked <strong>${restaurant.name}</strong> — ${allSlotsInWindow.length} slot(s) available, ${newSlots.length} new (prev: ${prevSlots.length})`];
+        if (totalRawSlots > 0 || fetchError) {
+          diagParts.push(`[raw: ${totalRawSlots}, window: ${effectiveEarliest}–${effectiveLatest}]`);
+        }
+        if (fetchError) {
+          diagParts.push(`[err: ${fetchError}]`);
+        }
+
         await db.from('activity_log').insert({
           user_id: userId,
           restaurant_id: restaurant.id,
           type: 'check',
-          message: `Checked <strong>${restaurant.name}</strong> — ${allSlotsInWindow.length} slot(s) available, ${newSlots.length} new (prev: ${prevSlots.length})`,
+          message: diagParts.join(' '),
         });
 
         if (newSlots.length > 0) {
