@@ -105,7 +105,10 @@ async function main() {
     process.exit(1);
   }
 
-  // 4. Check each restaurant
+  // 4. Scrape each unique venue_id + size combo once, then distribute results
+  // Cache key: "venueId:size" → Map<date, slots>
+  const scrapeCache = new Map();
+
   let checked = 0;
   for (const restaurant of restaurants) {
     const settings = settingsMap.get(restaurant.user_id);
@@ -130,21 +133,31 @@ async function main() {
     const allSlots = [];
 
     for (const size of sizes) {
-      try {
-        const slotsByDate = await scrapeOpenTableMultiDate(restaurant.venue_id, dates, size);
-        for (const [date, slots] of slotsByDate) {
-          for (const slot of slots) {
-            if (effectiveEarliest && slot.time < effectiveEarliest) continue;
-            if (effectiveLatest && slot.time > effectiveLatest) continue;
-            allSlots.push({ date, time: slot.time, displayTime: slot.displayTime });
-          }
+      const cacheKey = `${restaurant.venue_id}:${size}:${dates.join(',')}`;
+
+      if (!scrapeCache.has(cacheKey)) {
+        try {
+          const result = await scrapeOpenTableMultiDate(restaurant.venue_id, dates, size);
+          scrapeCache.set(cacheKey, result);
+          console.log(`[check] scraped ${restaurant.name} (size ${size}) — cached`);
+        } catch (err) {
+          console.error(`[check] error scraping ${restaurant.name} size=${size}:`, err.message);
+          scrapeCache.set(cacheKey, new Map());
         }
-      } catch (err) {
-        console.error(`[check] error scraping ${restaurant.name} size=${size}:`, err.message);
+      } else {
+        console.log(`[check] ${restaurant.name} (size ${size}) — using cached results`);
+      }
+
+      const slotsByDate = scrapeCache.get(cacheKey);
+      for (const [date, slots] of slotsByDate) {
+        for (const slot of slots) {
+          if (effectiveEarliest && slot.time < effectiveEarliest) continue;
+          if (effectiveLatest && slot.time > effectiveLatest) continue;
+          allSlots.push({ date, time: slot.time, displayTime: slot.displayTime });
+        }
       }
     }
 
-    // 5. Write results to Supabase
     const now = new Date().toISOString();
     const { error: updateErr } = await db
       .from('restaurants')
@@ -158,7 +171,7 @@ async function main() {
     if (updateErr) {
       console.error(`[check] failed to update ${restaurant.name}:`, updateErr.message);
     } else {
-      console.log(`[check] ${restaurant.name} — ${allSlots.length} slot(s) found`);
+      console.log(`[check] ${restaurant.name} — ${allSlots.length} slot(s) in window`);
     }
     checked++;
   }
