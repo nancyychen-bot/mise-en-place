@@ -18,9 +18,8 @@ try {
     const value = trimmed.slice(eqIdx + 1).trim();
     if (!process.env[key]) process.env[key] = value;
   }
-} catch (err) {
-  console.error('[check] failed to load .env:', err.message);
-  process.exit(1);
+} catch {
+  // No .env file — env vars come from GitHub Actions secrets or system env
 }
 
 // ── Supabase client ─────────────────────────────────────────────────
