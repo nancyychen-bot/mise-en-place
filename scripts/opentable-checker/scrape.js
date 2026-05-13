@@ -173,8 +173,10 @@ export async function scrapeOpenTableMultiDate(restaurantId, dates, partySize) {
 
     for (const date of dates) {
       try {
-        await setDate(page, date);
-        try { await page.selectOption('#party-size-picker', String(partySize)); } catch {}
+        const dateUrl = `https://www.opentable.com/booking/restref/availability?rid=${restaurantId}&restRef=${restaurantId}&partySize=${partySize}&date=${date}&time=19%3A00%3A00&lang=en-US`;
+        await page.goto(dateUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        try { await page.waitForLoadState('networkidle', { timeout: 10000 }); } catch {}
+        await page.waitForTimeout(1500);
 
         const findTableBtn = page.getByRole('button', { name: /find a table/i });
         if (await findTableBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
