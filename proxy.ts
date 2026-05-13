@@ -12,7 +12,7 @@ const PUBLIC_PATHS = [
   '/api/admin/debug-resy',
   '/api/admin/debug-opentable',
   '/api/resolve-opentable',
-  '/api/opentable-availability',
+
 ];
 
 export async function proxy(request: NextRequest) {

@@ -1,6 +1,6 @@
 import { db } from './db';
 import { findResyAvailability } from './resy';
-import { findOpenTableAvailability } from './opentable';
+
 import { findSevenRoomsAvailability } from './sevenrooms';
 import { findTockAvailability } from './tock';
 import { sendNotification } from './ntfy';
@@ -82,32 +82,32 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
         const combos = effectiveDates.flatMap(date => sizes.map(size => ({ date, size })));
 
         let fetchError = '';
-        const slotsByDate = await Promise.all(
-          combos.map(async ({ date, size }) => {
-            let slots: Slot[] = [];
-            try {
-              if (restaurant.platform === 'resy') {
-                if (!apiKey) return [];
-                slots = await withTimeout(findResyAvailability(apiKey, restaurant.venue_id, date, size));
-              } else if (restaurant.platform === 'opentable') {
-                slots = await withTimeout(findOpenTableAvailability(
-                  restaurant.venue_id, date, effectiveEarliest, size
-                ));
-              } else if (restaurant.platform === 'sevenrooms') {
-                slots = await withTimeout(findSevenRoomsAvailability(
-                  restaurant.venue_id, date, size
-                ));
-              } else if (restaurant.platform === 'tock') {
-                slots = await withTimeout(findTockAvailability(
-                  restaurant.venue_id, date, effectiveEarliest, size
-                ));
-              }
-            } catch (err) {
-              if (!fetchError) fetchError = `${date}/${size}: ${err instanceof Error ? err.message : String(err)}`;
-            }
-            return slots;
-          })
-        );
+        // OpenTable availability is populated by the local Playwright checker —
+        // skip the API call and use whatever is already in available_slots.
+        const slotsByDate = restaurant.platform === 'opentable'
+          ? [prevSlots]
+          : await Promise.all(
+              combos.map(async ({ date, size }) => {
+                let slots: Slot[] = [];
+                try {
+                  if (restaurant.platform === 'resy') {
+                    if (!apiKey) return [];
+                    slots = await withTimeout(findResyAvailability(apiKey, restaurant.venue_id, date, size));
+                  } else if (restaurant.platform === 'sevenrooms') {
+                    slots = await withTimeout(findSevenRoomsAvailability(
+                      restaurant.venue_id, date, size
+                    ));
+                  } else if (restaurant.platform === 'tock') {
+                    slots = await withTimeout(findTockAvailability(
+                      restaurant.venue_id, date, effectiveEarliest, size
+                    ));
+                  }
+                } catch (err) {
+                  if (!fetchError) fetchError = `${date}/${size}: ${err instanceof Error ? err.message : String(err)}`;
+                }
+                return slots;
+              })
+            );
 
         // Collect all in-window slots and find which are new (not previously notified)
         const allSlotsInWindow: Slot[] = [];
