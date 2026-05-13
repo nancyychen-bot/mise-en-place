@@ -1,0 +1,14 @@
+{
+  "name": "opentable-checker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node check.js",
+    "install-browsers": "npx playwright install chromium"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.103.3",
+    "playwright": "^1.52.0"
+  }
+}
