@@ -166,12 +166,28 @@ async function main() {
     checked++;
   }
 
-  // 6. Close browser
-  await closeBrowser();
   console.log(`[check] done — checked ${checked} restaurant(s)`);
 }
 
-main().catch((err) => {
+const INTERVAL_MS = 5 * 60 * 1000;
+
+async function loop() {
+  // Launch browser once — stays open for the lifetime of the process
+  await launchBrowser();
+  console.log('[check] browser launched (will stay open)');
+
+  while (true) {
+    try {
+      await main();
+    } catch (err) {
+      console.error('[check] error in check cycle:', err.message);
+    }
+    console.log(`[check] sleeping ${INTERVAL_MS / 1000}s until next check...`);
+    await new Promise(r => setTimeout(r, INTERVAL_MS));
+  }
+}
+
+loop().catch((err) => {
   console.error('[check] fatal error:', err);
   closeBrowser().catch(() => {});
   process.exit(1);
