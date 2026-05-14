@@ -22,7 +22,7 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
   // Load settings
   const { data: settings, error: settingsErr } = await db
     .from('user_settings')
-    .select('user_id, monitoring_enabled, timezone, active_hours_start, active_hours_end, resy_api_key, day_range, days_of_week, earliest_time, latest_time, quiet_hours_start, quiet_hours_end, ntfy_topic, ntfy_priority')
+    .select('user_id, monitoring_enabled, timezone, active_hours_start, active_hours_end, resy_api_key, day_range, days_of_week, earliest_time, latest_time, quiet_hours_start, quiet_hours_end, ntfy_topic, ntfy_priority, platform_health')
     .eq('user_id', userId)
     .single();
 
@@ -189,7 +189,7 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
           ]);
         }
 
-        return { restaurantId: restaurant.id, restaurantName: restaurant.name, platform: restaurant.platform, slots: allSlotsInWindow, checkedAt };
+        return { restaurantId: restaurant.id, restaurantName: restaurant.name, platform: restaurant.platform, slots: allSlotsInWindow, checkedAt, error: fetchError || undefined };
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         console.error(`[checker] error for restaurant ${restaurant.id}:`, msg);
@@ -197,10 +197,56 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
           user_id: userId, restaurant_id: restaurant.id, type: 'system',
           message: `Error checking <strong>${restaurant.name}</strong>: ${msg}`,
         });
-        return { restaurantId: restaurant.id, restaurantName: restaurant.name, platform: restaurant.platform, slots: [], checkedAt };
+        return { restaurantId: restaurant.id, restaurantName: restaurant.name, platform: restaurant.platform, slots: [], checkedAt, error: msg };
       }
     })
   );
 
+  await detectPlatformTransitions(userId, results, settings);
+
   return results;
+}
+
+type PlatformHealthMap = Partial<Record<'resy' | 'opentable' | 'sevenrooms' | 'tock', 'ok' | 'error'>>;
+
+async function detectPlatformTransitions(
+  userId: string,
+  results: CheckResult[],
+  settings: { platform_health?: PlatformHealthMap | null; ntfy_topic?: string | null; ntfy_priority?: 'min' | 'low' | 'default' | 'high' | 'max' | null }
+): Promise<void> {
+  const byPlatform = new Map<string, { total: number; errored: number; lastError: string }>();
+  for (const r of results) {
+    const entry = byPlatform.get(r.platform) ?? { total: 0, errored: 0, lastError: '' };
+    entry.total += 1;
+    if (r.error) {
+      entry.errored += 1;
+      entry.lastError = r.error;
+    }
+    byPlatform.set(r.platform, entry);
+  }
+
+  const prev: PlatformHealthMap = (settings.platform_health as PlatformHealthMap) ?? {};
+  const next: PlatformHealthMap = { ...prev };
+
+  for (const [platform, stats] of byPlatform.entries()) {
+    const status: 'ok' | 'error' = stats.errored === stats.total ? 'error' : 'ok';
+    next[platform as keyof PlatformHealthMap] = status;
+
+    const wasOk = prev[platform as keyof PlatformHealthMap] !== 'error';
+    if (status === 'error' && wasOk && settings.ntfy_topic) {
+      await sendNotification(
+        settings.ntfy_topic,
+        `${platform} is failing`,
+        `All ${stats.total} ${platform} restaurant(s) errored this check. Latest error: ${stats.lastError || 'unknown'}`,
+        settings.ntfy_priority ?? 'default',
+      );
+      await db.from('activity_log').insert({
+        user_id: userId,
+        type: 'system',
+        message: `Platform <strong>${platform}</strong> went red — notified.`,
+      });
+    }
+  }
+
+  await db.from('user_settings').update({ platform_health: next }).eq('user_id', userId);
 }
