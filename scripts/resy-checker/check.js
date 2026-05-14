@@ -1,6 +1,10 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { mkdtempSync } from 'fs';
+import { tmpdir } from 'os';
+import { platform } from 'process';
+import { chromium } from 'playwright';
 import { createClient } from '@supabase/supabase-js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -30,73 +34,105 @@ if (!supabaseUrl || !supabaseKey || !resyApiKey) {
 const db = createClient(supabaseUrl, supabaseKey);
 
 const CITY_GEO = {
-  ny: { lat: 40.7128, long: -74.0060 },
-  chi: { lat: 41.8781, long: -87.6298 },
-  la: { lat: 34.0522, long: -118.2437 },
-  sf: { lat: 37.7749, long: -122.4194 },
-  bos: { lat: 42.3601, long: -71.0589 },
-  dc: { lat: 38.9072, long: -77.0369 },
-  mia: { lat: 25.7617, long: -80.1918 },
-  atx: { lat: 30.2672, long: -97.7431 },
+  ny:  { lat: 40.7128,  long: -74.0060 },
+  chi: { lat: 41.8781,  long: -87.6298 },
+  la:  { lat: 34.0522,  long: -118.2437 },
+  sf:  { lat: 37.7749,  long: -122.4194 },
+  bos: { lat: 42.3601,  long: -71.0589 },
+  dc:  { lat: 38.9072,  long: -77.0369 },
+  mia: { lat: 25.7617,  long: -80.1918 },
+  atx: { lat: 30.2672,  long: -97.7431 },
 };
-
-const HEADERS = {
-  Authorization: `ResyAPI api_key="${resyApiKey}"`,
-  'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-  'X-Origin': 'https://resy.com',
-  Referer: 'https://resy.com/',
-  Accept: 'application/json, text/plain, */*',
-};
-
-function isoToTime(iso) {
-  const parts = iso.split(' ');
-  const timePart = parts[1] ?? iso.split('T')[1] ?? '';
-  const [hStr, mStr] = timePart.split(':');
-  const h = parseInt(hStr, 10);
-  const m = mStr ?? '00';
-  const suffix = h >= 12 ? 'PM' : 'AM';
-  const h12 = h % 12 || 12;
-  return {
-    time: `${String(h).padStart(2, '0')}:${m}`,
-    displayTime: `${h12}:${m} ${suffix}`,
-  };
-}
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function fetchResyWithRetry(url, maxAttempts = 4) {
-  let lastStatus = 0;
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const res = await fetch(url, { headers: HEADERS });
-    if (res.ok) return res;
-    lastStatus = res.status;
-    if (res.status < 500 || attempt === maxAttempts) throw new Error(`http_${res.status}`);
-    const backoffMs = 1500 * Math.pow(2, attempt - 1) + Math.random() * 500;
-    await sleep(backoffMs);
+// ── Browser management ─────────────────────────────────────────────
+
+let context = null;
+
+async function launchBrowser() {
+  if (!context || !context.browser()?.isConnected()) {
+    const userDataDir = mkdtempSync(join(tmpdir(), 'resy-chrome-'));
+    const isMac = platform === 'darwin';
+
+    context = await chromium.launchPersistentContext(userDataDir, {
+      ...(isMac ? { channel: 'chrome' } : {}),
+      headless: false,
+      args: [
+        '--disable-blink-features=AutomationControlled',
+        ...(isMac ? [] : ['--disable-gpu', '--no-sandbox']),
+      ],
+      viewport: { width: 1280, height: 800 },
+      locale: 'en-US',
+      timezoneId: 'America/New_York',
+      ignoreDefaultArgs: ['--enable-automation'],
+    });
   }
-  throw new Error(`http_${lastStatus}`);
+  return context;
 }
 
-async function findResyAvailability(venueId, day, partySize, city) {
+async function closeBrowser() {
+  if (context) {
+    await context.close().catch(() => {});
+    context = null;
+  }
+}
+
+// ── Resy API via browser context ────────────────────────────────────
+
+async function warmUpImperva(page) {
+  await page.goto('https://resy.com', { waitUntil: 'domcontentloaded', timeout: 30000 });
+  try { await page.waitForLoadState('networkidle', { timeout: 15000 }); } catch {}
+  await sleep(2000);
+  console.log('[resy-check] browser warmed up — Imperva cookies set');
+}
+
+async function findResyAvailability(page, venueId, day, partySize, city) {
   const geo = CITY_GEO[city] ?? CITY_GEO.ny;
   const url = `https://api.resy.com/4/find?lat=${geo.lat}&long=${geo.long}&day=${day}&party_size=${partySize}&venue_id=${venueId}`;
-  const res = await fetchResyWithRetry(url);
-  const data = await res.json();
-  const venues = data?.results?.venues;
+
+  const result = await page.evaluate(async ({ url, apiKey }) => {
+    try {
+      const res = await fetch(url, {
+        headers: {
+          Authorization: `ResyAPI api_key="${apiKey}"`,
+          Accept: 'application/json, text/plain, */*',
+        },
+      });
+      if (!res.ok) return { error: `http_${res.status}` };
+      const data = await res.json();
+      return { data };
+    } catch (err) {
+      return { error: err.message };
+    }
+  }, { url, apiKey: resyApiKey });
+
+  if (result.error) throw new Error(result.error);
+
+  const venues = result.data?.results?.venues;
   if (!Array.isArray(venues) || venues.length === 0) return [];
+
   const rawSlots = venues[0]?.slots ?? [];
   return rawSlots.map((s) => {
     const startIso = s?.date?.start ?? '';
-    const { time, displayTime } = isoToTime(startIso);
+    const parts = startIso.split(' ');
+    const timePart = parts[1] ?? startIso.split('T')[1] ?? '';
+    const [hStr, mStr] = timePart.split(':');
+    const h = parseInt(hStr, 10);
+    const m = mStr ?? '00';
+    const suffix = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
     return {
       date: day,
-      time,
-      displayTime,
+      time: `${String(h).padStart(2, '0')}:${m}`,
+      displayTime: `${h12}:${m} ${suffix}`,
       type: s?.config?.type ?? undefined,
       bookingToken: s?.config?.token ?? undefined,
     };
   });
 }
+
+// ── Helpers ─────────────────────────────────────────────────────────
 
 function getDateRange(days, timezone = 'America/New_York') {
   const result = [];
@@ -118,6 +154,8 @@ function inWindow(time, earliest, latest) {
   if (latest && time > latest) return false;
   return true;
 }
+
+// ── Main ────────────────────────────────────────────────────────────
 
 async function main() {
   console.log(`[resy-check] starting at ${new Date().toISOString()}`);
@@ -150,6 +188,10 @@ async function main() {
   const settingsMap = new Map();
   for (const s of allSettings ?? []) settingsMap.set(s.user_id, s);
 
+  await launchBrowser();
+  const page = await context.newPage();
+  await warmUpImperva(page);
+
   let checked = 0;
   for (const restaurant of restaurants) {
     const settings = settingsMap.get(restaurant.user_id);
@@ -181,7 +223,7 @@ async function main() {
     for (const date of dates) {
       for (const size of sizes) {
         try {
-          const slots = await findResyAvailability(restaurant.venue_id, date, size, city);
+          const slots = await findResyAvailability(page, restaurant.venue_id, date, size, city);
           for (const slot of slots) {
             if (!inWindow(slot.time, earliest, latest)) continue;
             allSlots.push(slot);
@@ -190,11 +232,9 @@ async function main() {
           hadError = true;
           console.error(`[resy-check] ${restaurant.name} ${date}/${size}: ${err.message}`);
         }
-        await sleep(800 + Math.random() * 600);
+        await sleep(300 + Math.random() * 300);
       }
     }
-
-    await sleep(500 + Math.random() * 500);
 
     const now = new Date().toISOString();
     const { error: updateErr } = await db
@@ -214,10 +254,13 @@ async function main() {
     checked++;
   }
 
+  await page.close();
+  await closeBrowser();
   console.log(`[resy-check] done — checked ${checked}`);
 }
 
 main().catch((err) => {
   console.error('[resy-check] fatal:', err);
+  closeBrowser().catch(() => {});
   process.exit(1);
 });
