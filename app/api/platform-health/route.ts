@@ -42,33 +42,37 @@ export async function GET() {
       continue;
     }
 
-    // Get the last 3 check entries across restaurants on this platform
-    // to avoid a single transient error flipping the whole platform red
-    const { data: logs, error: logErr } = await db
-      .from('activity_log')
-      .select('message, created_at')
-      .eq('user_id', user.id)
-      .eq('type', 'check')
-      .in('restaurant_id', restaurantIds)
-      .order('created_at', { ascending: false })
-      .limit(3);
+    // For each restaurant on this platform, get its most recent check.
+    // Only flag the platform red if EVERY restaurant's latest check has an error.
+    let lastChecked: string | null = null;
+    let totalRestaurants = 0;
+    let failedRestaurants = 0;
+    let lastError = '';
 
-    if (logErr || !logs || logs.length === 0) {
-      result[platform] = { status: 'idle', lastChecked: null };
-      continue;
+    for (const rid of restaurantIds) {
+      const { data: logs } = await db
+        .from('activity_log')
+        .select('message, created_at')
+        .eq('user_id', user.id)
+        .eq('type', 'check')
+        .eq('restaurant_id', rid)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (!logs || logs.length === 0) continue;
+      totalRestaurants++;
+      if (!lastChecked || logs[0].created_at > lastChecked) lastChecked = logs[0].created_at;
+      if (logs[0].message.includes('[err:')) {
+        failedRestaurants++;
+        const match = logs[0].message.match(/\[err:([^\]]*)\]/);
+        if (match) lastError = match[1].trim();
+      }
     }
 
-    const lastChecked = logs[0].created_at;
-    const errorLogs = logs.filter((l) => l.message.includes('[err:'));
-
-    // If the majority of recent checks have errors, mark unhealthy
-    if (errorLogs.length > logs.length / 2) {
-      const match = errorLogs[0].message.match(/\[err:([^\]]*)\]/);
-      result[platform] = {
-        status: 'error',
-        lastChecked,
-        error: match ? match[1].trim() : 'unknown',
-      };
+    if (totalRestaurants === 0) {
+      result[platform] = { status: 'idle', lastChecked: null };
+    } else if (failedRestaurants === totalRestaurants) {
+      result[platform] = { status: 'error', lastChecked, error: lastError || 'unknown' };
     } else {
       result[platform] = { status: 'ok', lastChecked };
     }
