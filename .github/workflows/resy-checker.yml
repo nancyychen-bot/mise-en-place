@@ -12,7 +12,7 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -26,10 +26,20 @@ jobs:
         working-directory: scripts/resy-checker
         run: npm ci
 
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('scripts/resy-checker/package-lock.json') }}
+
+      - name: Install Playwright browsers
+        working-directory: scripts/resy-checker
+        run: npx playwright install --with-deps chromium
+
       - name: Run Resy checker
         working-directory: scripts/resy-checker
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           RESY_API_KEY: ${{ secrets.RESY_API_KEY }}
-        run: node check.js
+        run: xvfb-run node check.js
