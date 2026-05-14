@@ -58,12 +58,29 @@ export default function PlatformHealth() {
         borderBottom: '1px solid var(--border-hair)',
         padding: '16px 0',
         marginBottom: '24px',
-        display: 'flex',
-        gap: '20px',
-        alignItems: 'center',
-        flexWrap: 'wrap',
       }}
     >
+      <div
+        style={{
+          fontSize: '10px',
+          fontWeight: 600,
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase',
+          color: 'var(--text-muted)',
+          fontFamily: 'var(--font-family-sans)',
+          marginBottom: '12px',
+        }}
+      >
+        Platform Health
+      </div>
+      <div
+        style={{
+          display: 'flex',
+          gap: '20px',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+        }}
+      >
       {ALL_PLATFORMS.map((platform) => {
         const entry = health[platform];
         const status = entry?.status ?? 'idle';
@@ -111,6 +128,17 @@ export default function PlatformHealth() {
           </div>
         );
       })}
+      </div>
+      <div
+        style={{
+          fontSize: '12px',
+          color: 'var(--text-muted)',
+          marginTop: '12px',
+          fontFamily: 'var(--font-family-sans)',
+        }}
+      >
+        If a platform is red, it means you either have to swap out a new API key for Resy or there&apos;s a bug — talk to Nancy.
+      </div>
     </div>
   );
 }

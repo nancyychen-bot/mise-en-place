@@ -27,7 +27,7 @@ export async function findResyAvailability(
   partySize: number
 ): Promise<Slot[]> {
   const url =
-    `${BASE}/4/find?lat=0&long=0&day=${day}&party_size=${partySize}&venue_id=${venueId}`;
+    `${BASE}/4/find?lat=40.7128&long=-74.0060&day=${day}&party_size=${partySize}&venue_id=${venueId}`;
 
   let res: Response;
   try {
