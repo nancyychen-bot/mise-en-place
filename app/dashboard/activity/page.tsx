@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { BtnSecondary } from '@/components/buttons';
+import PlatformHealth from '@/components/platform-health';
 
 interface LogItem {
   id: string;
@@ -65,6 +66,7 @@ export default function ActivityPage() {
 
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto', padding: '32px 40px 80px' }}>
+      <PlatformHealth />
       {/* Section header */}
       <div
         style={{
