@@ -62,11 +62,25 @@ function isoToTime(iso) {
   };
 }
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function fetchResyWithRetry(url, maxAttempts = 4) {
+  let lastStatus = 0;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const res = await fetch(url, { headers: HEADERS });
+    if (res.ok) return res;
+    lastStatus = res.status;
+    if (res.status < 500 || attempt === maxAttempts) throw new Error(`http_${res.status}`);
+    const backoffMs = 1500 * Math.pow(2, attempt - 1) + Math.random() * 500;
+    await sleep(backoffMs);
+  }
+  throw new Error(`http_${lastStatus}`);
+}
+
 async function findResyAvailability(venueId, day, partySize, city) {
   const geo = CITY_GEO[city] ?? CITY_GEO.ny;
   const url = `https://api.resy.com/4/find?lat=${geo.lat}&long=${geo.long}&day=${day}&party_size=${partySize}&venue_id=${venueId}`;
-  const res = await fetch(url, { headers: HEADERS });
-  if (!res.ok) throw new Error(`http_${res.status}`);
+  const res = await fetchResyWithRetry(url);
   const data = await res.json();
   const venues = data?.results?.venues;
   if (!Array.isArray(venues) || venues.length === 0) return [];
@@ -104,8 +118,6 @@ function inWindow(time, earliest, latest) {
   if (latest && time > latest) return false;
   return true;
 }
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function main() {
   console.log(`[resy-check] starting at ${new Date().toISOString()}`);
@@ -178,9 +190,11 @@ async function main() {
           hadError = true;
           console.error(`[resy-check] ${restaurant.name} ${date}/${size}: ${err.message}`);
         }
-        await sleep(200 + Math.random() * 200);
+        await sleep(800 + Math.random() * 600);
       }
     }
+
+    await sleep(500 + Math.random() * 500);
 
     const now = new Date().toISOString();
     const { error: updateErr } = await db
