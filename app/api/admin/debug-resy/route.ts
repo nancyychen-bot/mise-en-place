@@ -13,6 +13,8 @@ export async function GET(req: NextRequest) {
   if (!isAuthorized(req)) return unauthorizedResponse();
 
   const slug = req.nextUrl.searchParams.get('slug') ?? 'bistrot-ha';
+  const venueIdParam = req.nextUrl.searchParams.get('venue_id');
+  const partySize = req.nextUrl.searchParams.get('party_size') ?? '2';
   const apiKey = process.env.RESY_API_KEY ?? '';
   const today = new Date().toISOString().slice(0, 10);
 
@@ -29,8 +31,8 @@ export async function GET(req: NextRequest) {
     tryFetch(`https://api.resy.com/3/venue?url_slug=${slug}&location=ny`, headers),
     tryFetch(`https://api.resy.com/3/venueSearch?query=${slug}&geo[latitude]=40.7128&geo[longitude]=-74.0060`, headers),
     tryFetch(`https://api.resy.com/3/venueSearch?query=${slug}&geo[latitude]=40.7128&geo[longitude]=-74.0060&limit=5`, headers),
-    tryFetch(`https://api.resy.com/4/find?lat=40.7128&long=-74.0060&day=${today}&party_size=2&venue_id=${slug}`, headers),
+    tryFetch(`https://api.resy.com/4/find?lat=40.7128&long=-74.0060&day=${today}&party_size=${partySize}&venue_id=${venueIdParam ?? slug}`, headers),
   ]);
 
-  return NextResponse.json({ slug, venue_us_ny: r1, venue_ny: r2, search: r3, search_limit: r4, find: r5 });
+  return NextResponse.json({ slug, venue_id: venueIdParam, party_size: partySize, venue_us_ny: r1, venue_ny: r2, search: r3, search_limit: r4, find: r5 });
 }

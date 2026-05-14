@@ -1,6 +1,4 @@
 import { db } from './db';
-import { findResyAvailability } from './resy';
-
 import { findSevenRoomsAvailability } from './sevenrooms';
 import { findTockAvailability } from './tock';
 import { sendNotification } from './ntfy';
@@ -51,7 +49,6 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
   if (restErr) throw new Error(`Failed to load restaurants: ${restErr.message}`);
   if (!restaurants?.length) throw new Error(`No active restaurants found on your watchlist.`);
 
-  const apiKey: string = process.env.RESY_API_KEY ?? settings.resy_api_key ?? '';
   const dates = getDateRange(settings.day_range, settings.days_of_week, tz);
 
   const withTimeout = <T>(p: Promise<T>): Promise<T> =>
@@ -92,18 +89,16 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
         const combos = effectiveDates.flatMap(date => sizes.map(size => ({ date, size })));
 
         let fetchError = '';
-        // OpenTable availability is populated by the local Playwright checker —
-        // skip the API call and use whatever is already in available_slots.
-        const slotsByDate = restaurant.platform === 'opentable'
+        // OpenTable and Resy availability is populated by external checkers
+        // (GitHub Actions) that write directly to available_slots — skip the
+        // API call and use whatever is already there.
+        const slotsByDate = (restaurant.platform === 'opentable' || restaurant.platform === 'resy')
           ? [prevSlots]
           : await Promise.all(
               combos.map(async ({ date, size }) => {
                 let slots: Slot[] = [];
                 try {
-                  if (restaurant.platform === 'resy') {
-                    if (!apiKey) return [];
-                    slots = await withTimeout(findResyAvailability(apiKey, restaurant.venue_id, date, size));
-                  } else if (restaurant.platform === 'sevenrooms') {
+                  if (restaurant.platform === 'sevenrooms') {
                     slots = await withTimeout(findSevenRoomsAvailability(
                       restaurant.venue_id, date, size
                     ));
@@ -233,12 +228,13 @@ async function detectPlatformTransitions(
     next[platform as keyof PlatformHealthMap] = status;
 
     const wasOk = prev[platform as keyof PlatformHealthMap] !== 'error';
-    if (status === 'error' && wasOk && settings.ntfy_topic) {
+    const adminTopic = process.env.ADMIN_NTFY_TOPIC;
+    if (status === 'error' && wasOk && adminTopic) {
       await sendNotification(
-        settings.ntfy_topic,
+        adminTopic,
         `${platform} is failing`,
-        `All ${stats.total} ${platform} restaurant(s) errored this check. Latest error: ${stats.lastError || 'unknown'}`,
-        settings.ntfy_priority ?? 'default',
+        `User ${userId}: all ${stats.total} ${platform} restaurant(s) errored this check. Latest error: ${stats.lastError || 'unknown'}`,
+        'high',
       );
       await db.from('activity_log').insert({
         user_id: userId,
