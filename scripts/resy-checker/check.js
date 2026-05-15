@@ -179,7 +179,7 @@ function inWindow(time, earliest, latest) {
 async function main() {
   console.log(`[resy-check] starting at ${new Date().toISOString()}`);
 
-  const { data: restaurants, error: restErr } = await db
+  let { data: restaurants, error: restErr } = await db
     .from('restaurants')
     .select('id, user_id, name, venue_id, venue_city, party_size, party_sizes, earliest_time, latest_time, day_range, date_start, date_end')
     .eq('platform', 'resy')
