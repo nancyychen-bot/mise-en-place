@@ -258,8 +258,10 @@ export async function scrapeOpenTableMultiDate(restaurantId, dates, partySize) {
 
     // Attach slot tokens to results (match by time since API uses offsets not dates)
     let attached = 0;
+    console.log(`[scrape] token keys: ${[...slotTokens.keys()].join(', ')}`);
     for (const [date, slots] of results) {
       for (const slot of slots) {
+        console.log(`[scrape] looking up ${date}:${slot.time} or *:${slot.time}`);
         const tokens = slotTokens.get(`${date}:${slot.time}`) ?? slotTokens.get(`*:${slot.time}`);
         if (tokens) {
           slot.slotHash = tokens.slotHash;
