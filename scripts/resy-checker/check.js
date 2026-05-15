@@ -303,14 +303,25 @@ async function main() {
       const latest = restaurant.latest_time || settings.latest_time;
       const filtered = rawSlots.filter(s => inWindow(s.time, earliest, latest));
 
-      const { error: updateErr } = await db
-        .from('restaurants')
-        .update({ available_slots: filtered, last_checked: now, slots_updated_at: now })
-        .eq('id', restaurant.id);
-
-      if (updateErr) {
-        console.error(`[resy-check] update failed for ${restaurant.name}: ${updateErr.message}`);
+      // Don't overwrite with empty if we got throttled — preserve previous data
+      if (throttled && filtered.length === 0) {
+        await db.from('restaurants').update({ last_checked: now }).eq('id', restaurant.id);
+      } else {
+        await db.from('restaurants')
+          .update({ available_slots: filtered, last_checked: now, slots_updated_at: now })
+          .eq('id', restaurant.id);
       }
+
+      // Write to activity_log so platform health reflects GH Actions status
+      const checkMsg = hadError
+        ? `Checked <strong>${restaurant.name}</strong> — ${filtered.length} slot(s) available, 0 new (prev: 0) [err: ${throttled ? 'throttled' : 'partial'}]`
+        : `Checked <strong>${restaurant.name}</strong> — ${filtered.length} slot(s) available, 0 new (prev: 0)`;
+      await db.from('activity_log').insert({
+        user_id: restaurant.user_id,
+        restaurant_id: restaurant.id,
+        type: 'check',
+        message: checkMsg,
+      }).catch(() => {});
     }
     console.log(`[resy-check] ${venue.name} — ${rawSlots.length} slot(s)${hadError ? ' (with errors)' : ''} → ${venue.restaurants.length} row(s)`);
     checked++;
