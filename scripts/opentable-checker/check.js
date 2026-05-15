@@ -104,93 +104,45 @@ async function bookOpenTableSlot(page, restaurant, slot, authCookie, userInfo) {
   const dateTime = `${slot.date}T${slot.time}`;
   const csrfToken = parseOtCsrfToken(authCookie);
 
-  async function apiCall(url, body) {
-    return page.evaluate(
-      async ({ url, body, csrfToken }) => {
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-csrf-token': csrfToken,
-          },
-          body: JSON.stringify(body),
-        });
-        return { status: res.status, body: await res.text() };
-      },
-      { url, body, csrfToken }
-    );
+  if (!slot.slotHash || !slot.slotAvailabilityToken) {
+    return { success: false, error: 'no_slot_tokens_from_scraper' };
   }
 
-  // Step 1: Get availability to find slotHash and slotAvailabilityToken
-  const availRes = await apiCall(
-    'https://www.opentable.com/dapi/fe/gql?optype=query&opname=RestaurantsAvailability',
-    {
-      operationName: 'RestaurantsAvailability',
-      variables: {
-        restaurantIds: [Number(rid)],
-        date: slot.date,
-        time: slot.time,
-        partySize,
-        databaseRegion: 'NA',
-      },
-      extensions: {
-        persistedQuery: {
-          sha256Hash: 'e6b87021ed6e865a7778aa39d35d09864c1be29c683c707602dd3de43c854d86',
+  const bookRes = await page.evaluate(
+    async ({ url, body, csrfToken }) => {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-csrf-token': csrfToken,
         },
-      },
-    }
-  );
-
-  if (availRes.status !== 200) {
-    return { success: false, error: `avail_http_${availRes.status}: ${availRes.body.slice(0, 200)}` };
-  }
-
-  let slotHash = null;
-  let slotAvailabilityToken = null;
-  try {
-    const data = JSON.parse(availRes.body);
-    const restaurant = data?.data?.restaurantsAvailability?.[0] ?? {};
-    const days = restaurant?.availabilityDays ?? [];
-    for (const day of days) {
-      for (const s of day?.slots ?? []) {
-        if (!s.isAvailable) continue;
-        const tsTime = (s.dateTime ?? s.time ?? '').slice(11, 16);
-        if (tsTime === slot.time) {
-          slotHash = s.slotHash;
-          slotAvailabilityToken = s.slotAvailabilityToken;
-          break;
-        }
-      }
-      if (slotHash) break;
-    }
-  } catch {}
-
-  if (!slotHash || !slotAvailabilityToken) {
-    return { success: false, error: `no_slot_tokens: avail=${availRes.status}, body=${availRes.body.slice(0, 200)}` };
-  }
-
-  // Step 2: Make reservation
-  const bookRes = await apiCall(
-    'https://www.opentable.com/dapi/booking/make-reservation',
+        body: JSON.stringify(body),
+      });
+      return { status: res.status, body: await res.text() };
+    },
     {
-      restaurantId: Number(rid),
-      slotAvailabilityToken,
-      slotHash,
-      isModify: false,
-      reservationDateTime: dateTime,
-      partySize,
-      firstName: userInfo.firstName || 'Guest',
-      lastName: userInfo.lastName || '',
-      email: userInfo.email || '',
-      phoneNumber: userInfo.phone || '',
-      phoneNumberCountryId: 'US',
-      country: 'US',
-      reservationType: 'Standard',
-      reservationAttribute: 'default',
-      diningAreaId: 1,
-      pointsType: 'Standard',
-      points: 100,
-      optInEmailRestaurant: false,
+      url: 'https://www.opentable.com/dapi/booking/make-reservation',
+      body: {
+        restaurantId: Number(rid),
+        slotAvailabilityToken: slot.slotAvailabilityToken,
+        slotHash: slot.slotHash,
+        isModify: false,
+        reservationDateTime: dateTime,
+        partySize,
+        firstName: userInfo.firstName || 'Guest',
+        lastName: userInfo.lastName || '',
+        email: userInfo.email || '',
+        phoneNumber: userInfo.phone || '',
+        phoneNumberCountryId: 'US',
+        country: 'US',
+        reservationType: 'Standard',
+        reservationAttribute: 'default',
+        diningAreaId: 1,
+        pointsType: 'Standard',
+        points: 100,
+        optInEmailRestaurant: false,
+      },
+      csrfToken,
     }
   );
 
@@ -317,7 +269,10 @@ async function main() {
         for (const slot of slots) {
           if (effectiveEarliest && slot.time < effectiveEarliest) continue;
           if (effectiveLatest && slot.time > effectiveLatest) continue;
-          allSlots.push({ date, time: slot.time, displayTime: slot.displayTime });
+          allSlots.push({
+            date, time: slot.time, displayTime: slot.displayTime,
+            slotHash: slot.slotHash, slotAvailabilityToken: slot.slotAvailabilityToken,
+          });
         }
       }
     }

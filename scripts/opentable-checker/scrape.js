@@ -155,6 +155,47 @@ export async function scrapeOpenTableMultiDate(restaurantId, dates, partySize) {
   const ctx = await launchBrowser();
   const page = await ctx.newPage();
   const results = new Map();
+  const slotTokens = new Map(); // "date:time" → { slotHash, slotAvailabilityToken }
+
+  // Intercept network responses to capture slot tokens from availability API
+  page.on('response', async (response) => {
+    const url = response.url();
+    if (!url.includes('availability') && !url.includes('gql')) return;
+    if (response.status() !== 200) return;
+    try {
+      const json = await response.json();
+      // Handle GraphQL availability response
+      const restaurants = json?.data?.restaurantsAvailability ?? json?.data?.availability ?? [];
+      for (const r of Array.isArray(restaurants) ? restaurants : [restaurants]) {
+        for (const day of r?.availabilityDays ?? []) {
+          for (const s of day?.slots ?? []) {
+            if (!s.isAvailable) continue;
+            const dt = s.dateTime ?? s.time ?? '';
+            const dateStr = dt.slice(0, 10);
+            const timeStr = dt.slice(11, 16);
+            if (dateStr && timeStr && (s.slotHash || s.slotAvailabilityToken)) {
+              slotTokens.set(`${dateStr}:${timeStr}`, {
+                slotHash: s.slotHash,
+                slotAvailabilityToken: s.slotAvailabilityToken,
+              });
+            }
+          }
+        }
+        // Also check flat slots array
+        for (const s of r?.timeslots ?? r?.slots ?? []) {
+          const dt = s.dateTime ?? s.time ?? '';
+          const dateStr = dt.slice(0, 10);
+          const timeStr = dt.slice(11, 16);
+          if (dateStr && timeStr && (s.slotHash || s.slotAvailabilityToken)) {
+            slotTokens.set(`${dateStr}:${timeStr}`, {
+              slotHash: s.slotHash,
+              slotAvailabilityToken: s.slotAvailabilityToken,
+            });
+          }
+        }
+      }
+    } catch {}
+  });
 
   try {
     const firstDate = dates[0];
@@ -211,6 +252,18 @@ export async function scrapeOpenTableMultiDate(restaurantId, dates, partySize) {
       } catch (err) {
         console.error(`[scrape] error on ${date}:`, err.message);
         results.set(date, []);
+      }
+    }
+
+    // Attach slot tokens to results
+    for (const [date, slots] of results) {
+      for (const slot of slots) {
+        const key = `${date}:${slot.time}`;
+        const tokens = slotTokens.get(key);
+        if (tokens) {
+          slot.slotHash = tokens.slotHash;
+          slot.slotAvailabilityToken = tokens.slotAvailabilityToken;
+        }
       }
     }
 
