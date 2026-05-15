@@ -336,6 +336,13 @@ async function main() {
         if (best) {
           try {
             const ctx = await launchBrowser();
+            // Inject auth cookie into browser context
+            await ctx.addCookies([{
+              name: 'authCke',
+              value: userSettings.opentable_session,
+              domain: '.opentable.com',
+              path: '/',
+            }]);
             const bookingPage = await ctx.newPage();
             await bookingPage.goto('https://www.opentable.com', { waitUntil: 'domcontentloaded', timeout: 30000 });
             await bookingPage.waitForTimeout(2000);
