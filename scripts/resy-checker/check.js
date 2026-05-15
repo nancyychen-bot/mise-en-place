@@ -96,16 +96,12 @@ async function warmUpImperva() {
   apiPage = page;
 }
 
-async function rewarmImperva() {
-  if (apiPage) await apiPage.close().catch(() => {});
-  apiPage = await context.newPage();
-  await apiPage.goto('https://resy.com', { waitUntil: 'domcontentloaded', timeout: 30000 });
-  try { await apiPage.waitForLoadState('networkidle', { timeout: 15000 }); } catch {}
-  await sleep(3000);
-  await apiPage.setExtraHTTPHeaders({
-    Authorization: `ResyAPI api_key="${resyApiKey}"`,
-  });
-  console.log('[resy-check] re-warmed Imperva — fresh session');
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
 }
 
 function isoToTime(iso) {
@@ -198,7 +194,8 @@ async function main() {
     console.log('[resy-check] no active Resy restaurants');
     return;
   }
-  console.log(`[resy-check] ${restaurants.length} restaurant(s)`);
+  shuffle(restaurants);
+  console.log(`[resy-check] ${restaurants.length} restaurant(s) (shuffled)`);
 
   const userIds = [...new Set(restaurants.map((r) => r.user_id))];
   const { data: allSettings, error: settingsErr } = await db
@@ -244,7 +241,9 @@ async function main() {
     const allSlots = [];
     let hadError = false;
     let consecutiveFailures = 0;
+    let throttled = false;
     for (const date of dates) {
+      if (throttled) break;
       for (const size of sizes) {
         try {
           const slots = await findResyAvailability(restaurant.venue_id, date, size, city);
@@ -259,9 +258,9 @@ async function main() {
           if (err.message.includes('ERR_HTTP_RESPONSE_CODE_FAILURE') || err.message.includes('http_5')) {
             consecutiveFailures++;
             if (consecutiveFailures >= 3) {
-              console.log('[resy-check] 3 consecutive failures — re-warming Imperva');
-              await rewarmImperva();
-              consecutiveFailures = 0;
+              console.log(`[resy-check] ${restaurant.name}: throttled — skipping remaining dates`);
+              throttled = true;
+              break;
             }
           }
         }
