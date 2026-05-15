@@ -203,27 +203,6 @@ export default function AccountPage() {
           </FieldRow>
         </div>
 
-        {/* API Keys */}
-        <div style={sectionStyle}>
-          <h2 style={sectionHeaderStyle}>API Keys</h2>
-          <FieldRow
-            label="Resy API Key"
-            description="Required to check Resy restaurants. See Setup Guide for how to find yours."
-          >
-            <input
-              type="password"
-              style={inputStyle}
-              value={data.resyApiKey ?? ''}
-              onChange={(e) => setData((d) => ({ ...d, resyApiKey: e.target.value || null }))}
-              placeholder="See Setup Guide for instructions on retrieving your key"
-              autoComplete="off"
-            />
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px' }}>
-              Hit <strong>Save Changes</strong> at the bottom after adding your key.
-            </p>
-          </FieldRow>
-        </div>
-
         {/* Monitoring */}
         <div style={sectionStyle}>
           <h2 style={sectionHeaderStyle}>Monitoring</h2>

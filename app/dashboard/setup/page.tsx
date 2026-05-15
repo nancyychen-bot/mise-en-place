@@ -143,88 +143,7 @@ export default function SetupPage() {
       </div>
 
       {/* Step 1 */}
-      <Step number={1} eyebrow="About 2 minutes" title="Find your Resy API key">
-        <p style={descStyle}>
-          Mise en Place needs a key to check availability on Resy. Don&rsquo;t worry — it&rsquo;s not a
-          password. It&rsquo;s just a code that lets the app talk to Resy on your behalf, and finding
-          it takes about 60 seconds.
-        </p>
-
-        <Callout variant="tip">
-          <strong>You only do this once.</strong> Once it&rsquo;s saved to your account, you&rsquo;re
-          done forever.
-        </Callout>
-
-        <strong style={{ fontSize: '13px' }}>Do this (on a computer, not your phone):</strong>
-        <ol style={{ margin: '16px 0 16px 22px', fontSize: '14px', lineHeight: 1.7, color: 'var(--text)' }}>
-          <li style={{ marginBottom: '8px' }}>
-            <strong>Open resy.com and log in.</strong>
-          </li>
-          <li style={{ marginBottom: '16px' }}>
-            <strong>Open the browser inspector</strong> using the shortcut for your browser:
-            <ul style={{ margin: '8px 0 0 20px', lineHeight: 1.9 }}>
-              <li><strong>Windows (Chrome):</strong> press <code className="code">F12</code></li>
-              <li><strong>Mac (Chrome):</strong> press <code className="code">Cmd + Option + I</code></li>
-              <li>
-                <strong>Mac (Safari):</strong> first go to <strong>Safari → Settings → Advanced</strong> and
-                check <em>&ldquo;Show features for web developers.&rdquo;</em> Then press{' '}
-                <code className="code">Cmd + Option + I</code>.
-              </li>
-            </ul>
-            <p style={{ margin: '8px 0 0', fontSize: '14px', color: 'var(--text-secondary)' }}>
-              A panel opens at the bottom or side of the screen — that&rsquo;s normal.
-            </p>
-          </li>
-          <li style={{ marginBottom: '8px' }}>
-            <strong>Click the &ldquo;Network&rdquo; tab</strong> at the top of that panel.
-          </li>
-          <li style={{ marginBottom: '8px' }}>
-            <strong>Search for any restaurant on resy.com</strong> — just type something into the
-            Resy search bar like you normally would. This causes the page to make some
-            behind-the-scenes requests that we need to see.
-          </li>
-          <li style={{ marginBottom: '8px' }}>
-            <strong>In the Network panel, find the filter box and type{' '}
-            <code className="code">api.resy.com</code></strong>. You should see a list of requests
-            appear below.
-          </li>
-        </ol>
-
-        <Callout variant="warn">
-          <strong>Don&rsquo;t see any requests?</strong> Make sure you searched for a restaurant{' '}
-          <em>after</em> opening the Network tab — anything that happened before you opened it
-          won&rsquo;t show up. Try typing in the Resy search bar again with the panel already open.
-        </Callout>
-
-        <ol start={6} style={{ margin: '16px 0 16px 22px', fontSize: '14px', lineHeight: 1.7, color: 'var(--text)' }}>
-          <li style={{ marginBottom: '8px' }}>
-            <strong>Click on any request in the list.</strong> A new panel opens on the right.
-          </li>
-          <li style={{ marginBottom: '8px' }}>
-            <strong>Click &ldquo;Headers&rdquo;</strong> (it may already be selected). Scroll down
-            until you see a line that says <code className="code">Authorization</code>. It will look
-            like this:
-            <br />
-            <code className="code" style={{ display: 'inline-block', marginTop: '6px' }}>
-              ResyAPI api_key=&quot;tQ9mXr2Pn8vKwL4eHcYj6bAsDf3GzU7i&quot;
-            </code>
-          </li>
-          <li style={{ marginBottom: '8px' }}>
-            <strong>Copy just the key</strong> — the part inside the quotes after{' '}
-            <code className="code">api_key=</code>. Don&rsquo;t include the quotes themselves.
-          </li>
-          <li style={{ marginBottom: '8px' }}>
-            <strong>Paste it into the Resy API Key field</strong> on your{' '}
-            <Link href="/dashboard/account" style={{ textDecoration: 'underline' }}>
-              Account
-            </Link>{' '}
-            page, then click <strong>Save Changes</strong>.
-          </li>
-        </ol>
-      </Step>
-
-      {/* Step 2 */}
-      <Step number={2} eyebrow="About 5 minutes" title="Set up push notifications with ntfy.sh">
+      <Step number={1} eyebrow="About 5 minutes" title="Set up push notifications with ntfy.sh">
         <p style={descStyle}>
           This is how your phone gets alerted when a reservation opens up. You pick a secret topic
           name, subscribe on your phone, and paste it here — that&rsquo;s it.
@@ -262,7 +181,7 @@ export default function SetupPage() {
       </Step>
 
       {/* Step 3 */}
-      <Step number={3} eyebrow="About 3 minutes" title="Add your first restaurant">
+      <Step number={2} eyebrow="About 3 minutes" title="Add your first restaurant">
         <p style={descStyle}>
           Time for the fun part. Let&rsquo;s add a restaurant to your watchlist so Mise en Place knows
           what to watch. We support both <strong>Resy</strong> and <strong>OpenTable</strong>.
