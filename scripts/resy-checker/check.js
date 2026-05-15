@@ -229,9 +229,9 @@ async function getBookingDetails(authToken, configId, day, partySize) {
 }
 
 async function bookSlot(authToken, bookToken, paymentMethodId) {
-  const bodyObj = { book_token: bookToken };
+  const params = new URLSearchParams({ book_token: bookToken });
   if (paymentMethodId != null) {
-    bodyObj.struct_payment_method = JSON.stringify({ id: paymentMethodId });
+    params.set('struct_payment_method', JSON.stringify({ id: paymentMethodId }));
   }
 
   const response = await apiPage.evaluate(
@@ -239,7 +239,7 @@ async function bookSlot(authToken, bookToken, paymentMethodId) {
       const res = await fetch('https://api.resy.com/3/book', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded',
           'Authorization': `ResyAPI api_key="${apiKey}"`,
           'x-resy-auth-token': authToken,
         },
@@ -247,7 +247,7 @@ async function bookSlot(authToken, bookToken, paymentMethodId) {
       });
       return { status: res.status, body: await res.text() };
     },
-    { body: JSON.stringify(bodyObj), apiKey: resyApiKey, authToken }
+    { body: params.toString(), apiKey: resyApiKey, authToken }
   );
 
   if (response.status === 401 || response.status === 403) {
