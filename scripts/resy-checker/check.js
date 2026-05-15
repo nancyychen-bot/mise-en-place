@@ -78,30 +78,22 @@ async function closeBrowser() {
   }
 }
 
-// ── Resy API via browser cookies ────────────────────────────────────
+// ── Resy API via browser navigation ─────────────────────────────────
 
-let impervaHeaders = {};
+let apiPage = null;
 
-async function warmUpImperva(page) {
+async function warmUpImperva() {
+  const page = await context.newPage();
   await page.goto('https://resy.com', { waitUntil: 'domcontentloaded', timeout: 30000 });
   try { await page.waitForLoadState('networkidle', { timeout: 15000 }); } catch {}
   await sleep(2000);
+  console.log('[resy-check] browser warmed up on resy.com');
 
-  const cookies = await context.cookies('https://resy.com');
-  const apiCookies = await context.cookies('https://api.resy.com');
-  const allCookies = [...cookies, ...apiCookies];
-  const cookieStr = allCookies.map(c => `${c.name}=${c.value}`).join('; ');
-
-  impervaHeaders = {
+  await page.setExtraHTTPHeaders({
     Authorization: `ResyAPI api_key="${resyApiKey}"`,
-    Accept: 'application/json, text/plain, */*',
-    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-    Origin: 'https://resy.com',
-    Referer: 'https://resy.com/',
-    Cookie: cookieStr,
-  };
+  });
 
-  console.log(`[resy-check] browser warmed up — ${allCookies.length} cookies captured`);
+  apiPage = page;
 }
 
 function isoToTime(iso) {
@@ -122,9 +114,18 @@ async function findResyAvailability(venueId, day, partySize, city) {
   const geo = CITY_GEO[city] ?? CITY_GEO.ny;
   const url = `https://api.resy.com/4/find?lat=${geo.lat}&long=${geo.long}&day=${day}&party_size=${partySize}&venue_id=${venueId}`;
 
-  const res = await fetch(url, { headers: impervaHeaders });
-  if (!res.ok) throw new Error(`http_${res.status}`);
-  const data = await res.json();
+  const response = await apiPage.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+  if (!response || response.status() >= 400) {
+    throw new Error(`http_${response ? response.status() : 'no_response'}`);
+  }
+
+  const text = await apiPage.evaluate(() => document.body.innerText);
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error(`not_json: ${text.slice(0, 100)}`);
+  }
 
   const venues = data?.results?.venues;
   if (!Array.isArray(venues) || venues.length === 0) return [];
@@ -200,9 +201,7 @@ async function main() {
   for (const s of allSettings ?? []) settingsMap.set(s.user_id, s);
 
   await launchBrowser();
-  const page = await context.newPage();
-  await warmUpImperva(page);
-  await page.close();
+  await warmUpImperva();
 
   let checked = 0;
   for (const restaurant of restaurants) {
