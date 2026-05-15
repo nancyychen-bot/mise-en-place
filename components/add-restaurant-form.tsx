@@ -20,7 +20,9 @@ const SUGGESTIONS: Suggestion[] = [
   { name: "Le Veau d'Or", platform: "opentable", venueIdOrUrl: "220387", partySizes: [2] },
   { name: "Bridges", platform: "resy", venueIdOrUrl: "https://resy.com/cities/ny/venues/bridges", partySizes: [2] },
   { name: "Sunn's", platform: "opentable", venueIdOrUrl: "1428529", partySizes: [2] },
-  { name: "Semma", platform: "sevenrooms", venueIdOrUrl: "https://www.sevenrooms.com/explore/semma", partySizes: [2] },
+  { name: "Red Hook Tavern", platform: "opentable", venueIdOrUrl: "1048522", partySizes: [2] },
+  { name: "Thai Diner", platform: "resy", venueIdOrUrl: "49453", partySizes: [2] },
+  { name: "I Sodi", platform: "resy", venueIdOrUrl: "443", partySizes: [2] },
 ];
 
 interface AddRestaurantFormProps {
