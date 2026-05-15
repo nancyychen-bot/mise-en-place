@@ -248,14 +248,27 @@ async function main() {
   }
 
   let uniqueVenues = [...venueMap.entries()];
-  // Batch slicing on unique venues
+
+  // Estimate total API calls and determine how many batches are actually needed
+  const CALLS_PER_BATCH = 50;
+  let totalEstimatedCalls = 0;
+  for (const [, venue] of uniqueVenues) {
+    totalEstimatedCalls += venue.allDates.size * venue.allSizes.size;
+  }
+  const neededBatches = Math.max(1, Math.ceil(totalEstimatedCalls / CALLS_PER_BATCH));
+
   if (batchArg) {
     const [batchNum, batchTotal] = batchArg.split('=')[1].split('/').map(Number);
+    // If this batch number exceeds what's needed, exit early
+    if (batchNum > neededBatches) {
+      console.log(`[resy-check] batch ${batchNum}/${batchTotal}: not needed (${neededBatches} batches sufficient for ${totalEstimatedCalls} calls)`);
+      return;
+    }
     uniqueVenues.sort((a, b) => a[0].localeCompare(b[0]));
-    const perBatch = Math.ceil(uniqueVenues.length / batchTotal);
+    const perBatch = Math.ceil(uniqueVenues.length / neededBatches);
     const start = (batchNum - 1) * perBatch;
     uniqueVenues = uniqueVenues.slice(start, start + perBatch);
-    console.log(`[resy-check] batch ${batchNum}/${batchTotal}: ${uniqueVenues.length} venue(s)`);
+    console.log(`[resy-check] batch ${batchNum}/${batchTotal} (${neededBatches} needed): ${uniqueVenues.length} venue(s), ~${totalEstimatedCalls} total calls`);
   }
   shuffle(uniqueVenues);
   console.log(`[resy-check] ${restaurants.length} restaurant(s) → ${uniqueVenues.length} unique venue(s)`);
