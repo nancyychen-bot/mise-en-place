@@ -260,9 +260,9 @@ export default function AccountPage() {
             <Link href="/dashboard/setup" style={{ textDecoration: 'underline' }}>Setup Guide</Link>{' '}
             for instructions.
           </p>
-          {(['resy', 'opentable', 'sevenrooms'] as const).map((platform) => {
-            const fieldMap = { resy: 'resyAuthToken', opentable: 'opentableSession', sevenrooms: 'sevenroomsAuthToken' } as const;
-            const labelMap = { resy: 'Resy', opentable: 'OpenTable', sevenrooms: 'SevenRooms' } as const;
+          {(['resy', 'opentable'] as const).map((platform) => {
+            const fieldMap = { resy: 'resyAuthToken', opentable: 'opentableSession' } as const;
+            const labelMap = { resy: 'Resy', opentable: 'OpenTable' } as const;
             const field = fieldMap[platform];
             const isSet = !!data[field];
             const isExpired = data.tokenExpired?.[platform] === true;

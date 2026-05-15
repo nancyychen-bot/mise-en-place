@@ -107,7 +107,7 @@ When multiple new slots match a restaurant's time window:
 Per-platform instructions with screenshots:
 
 - **Resy:** Log into resy.com → DevTools → Network tab → find any `api.resy.com` request → copy `x-resy-auth-token` header value → paste into account settings
-- **OpenTable:** Log into opentable.com → DevTools → Application → Cookies → copy session cookie values → paste into account settings
+- **OpenTable:** Log into opentable.com → DevTools → Application → Cookies → find `authCke` cookie → copy its value → paste into account settings
 - **SevenRooms:** Log into sevenrooms.com → DevTools → Network tab → find auth header → paste into account settings
 
 ### Account Settings — New "Platform Connections" section

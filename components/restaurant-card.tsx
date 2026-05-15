@@ -377,7 +377,7 @@ export default function RestaurantCard({
               </button>
             )}
           </div>
-          {restaurant.platform !== 'tock' && (
+          {restaurant.platform !== 'tock' && restaurant.platform !== 'sevenrooms' && (
             <>
               <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' }}>
                 Auto-Book

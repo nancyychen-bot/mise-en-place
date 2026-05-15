@@ -195,7 +195,7 @@ export default function SetupPage() {
 
         <strong style={{ fontSize: '13px' }}>For Resy:</strong>
         <ol style={{ margin: '12px 0 16px 22px', fontSize: '14px', lineHeight: 1.7, color: 'var(--text)' }}>
-          <li>Log into <strong>resy.com</strong> in your browser</li>
+          <li><strong>Log into your account</strong> on <strong>resy.com</strong></li>
           <li>Open DevTools (<code className="code">Cmd + Option + I</code> on Mac, <code className="code">F12</code> on Windows)</li>
           <li>Go to the <strong>Network</strong> tab, then search for any restaurant on Resy</li>
           <li>Click any <code className="code">api.resy.com</code> request, then click <strong>Headers</strong></li>
@@ -205,18 +205,13 @@ export default function SetupPage() {
 
         <strong style={{ fontSize: '13px' }}>For OpenTable:</strong>
         <ol style={{ margin: '12px 0 16px 22px', fontSize: '14px', lineHeight: 1.7, color: 'var(--text)' }}>
-          <li>Log into <strong>opentable.com</strong> in your browser</li>
-          <li>Open DevTools → <strong>Application</strong> tab → <strong>Cookies</strong></li>
-          <li>Find and copy the <code className="code">csrf_token</code> cookie value</li>
+          <li><strong>Log into your account</strong> on <strong>opentable.com</strong></li>
+          <li>Open DevTools (<code className="code">Cmd + Option + I</code> on Mac, <code className="code">F12</code> on Windows)</li>
+          <li>Go to the <strong>Application</strong> tab → <strong>Cookies</strong> → <code className="code">https://www.opentable.com</code></li>
+          <li>Find the <code className="code">authCke</code> cookie (between <code className="code">ak_bmsc</code> and <code className="code">bm_lso</code>) and copy its value</li>
           <li>Paste it into the OpenTable Token field on your <Link href="/dashboard/account" style={{ textDecoration: 'underline' }}>Account</Link> page</li>
         </ol>
 
-        <strong style={{ fontSize: '13px' }}>For SevenRooms:</strong>
-        <ol style={{ margin: '12px 0 16px 22px', fontSize: '14px', lineHeight: 1.7, color: 'var(--text)' }}>
-          <li>Log into <strong>sevenrooms.com</strong>, open DevTools → <strong>Network</strong></li>
-          <li>Make a reservation search, then find the <code className="code">Authorization</code> header</li>
-          <li>Copy the token value and paste it on your <Link href="/dashboard/account" style={{ textDecoration: 'underline' }}>Account</Link> page</li>
-        </ol>
       </Step>
 
       {/* Step 3 */}
