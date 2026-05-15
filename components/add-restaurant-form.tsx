@@ -23,6 +23,7 @@ const SUGGESTIONS: Suggestion[] = [
   { name: "Red Hook Tavern", platform: "opentable", venueIdOrUrl: "1048522", partySizes: [2] },
   { name: "Thai Diner", platform: "resy", venueIdOrUrl: "49453", partySizes: [2] },
   { name: "I Sodi", platform: "resy", venueIdOrUrl: "443", partySizes: [2] },
+  { name: "Torrisi", platform: "resy", venueIdOrUrl: "64593", partySizes: [2] },
 ];
 
 interface AddRestaurantFormProps {
