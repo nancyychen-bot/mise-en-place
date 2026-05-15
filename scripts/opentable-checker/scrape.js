@@ -165,6 +165,11 @@ export async function scrapeOpenTableMultiDate(restaurantId, dates, partySize) {
       const contentType = response.headers()['content-type'] ?? '';
       if (!contentType.includes('json')) return;
       const json = await response.json();
+      // Dump first availability response structure for debugging
+      if (url.includes('Availability') || url.includes('availability')) {
+        const sample = JSON.stringify(json).slice(0, 1500);
+        console.log(`[scrape] AVAIL RESPONSE: ${sample}`);
+      }
       // Walk entire response tree to find any objects with slotHash
       function extractTokens(obj, depth = 0) {
         if (!obj || typeof obj !== 'object' || depth > 10) return;
