@@ -56,8 +56,7 @@ async function launchBrowser() {
     const isMac = platform === 'darwin';
 
     context = await chromium.launchPersistentContext(userDataDir, {
-      ...(isMac ? { channel: 'chrome' } : {}),
-      headless: false,
+      ...(isMac ? { channel: 'chrome', headless: false } : { headless: true }),
       args: [
         '--disable-blink-features=AutomationControlled',
         ...(isMac ? [] : ['--disable-gpu', '--no-sandbox']),
@@ -194,6 +193,18 @@ async function main() {
     console.log('[resy-check] no active Resy restaurants');
     return;
   }
+  // Parse --batch flag: "1/3" means batch 1 of 3
+  const batchArg = process.argv.find(a => a.startsWith('--batch='));
+  if (batchArg) {
+    const [batchNum, batchTotal] = batchArg.split('=')[1].split('/').map(Number);
+    // Stable sort by ID before slicing so batches don't overlap
+    restaurants.sort((a, b) => a.id.localeCompare(b.id));
+    const perBatch = Math.ceil(restaurants.length / batchTotal);
+    const start = (batchNum - 1) * perBatch;
+    restaurants = restaurants.slice(start, start + perBatch);
+    console.log(`[resy-check] batch ${batchNum}/${batchTotal}: ${restaurants.length} restaurant(s)`);
+  }
+
   shuffle(restaurants);
   console.log(`[resy-check] ${restaurants.length} restaurant(s) (shuffled)`);
 
