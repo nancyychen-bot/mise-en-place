@@ -93,33 +93,102 @@ async function handleAuthExpired(userId, platform) {
   });
 }
 
-async function bookOpenTableSlot(page, restaurant, slot, sessionToken) {
-  const url = `https://www.opentable.com/booking/restref/availability?rid=${restaurant.venue_id}&restRef=${restaurant.venue_id}&partySize=${restaurant.party_size}&date=${slot.date}&time=${slot.time}%3A00&lang=en-US`;
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-  await page.waitForTimeout(2000);
+async function bookOpenTableSlot(restaurant, slot, authToken) {
+  const rid = restaurant.venue_id;
+  const partySize = restaurant.party_sizes?.[0] ?? restaurant.party_size;
+  const dateTime = `${slot.date}T${slot.time}`;
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${authToken}`,
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36',
+  };
 
-  await page.context().addCookies([{
-    name: 'csrf_token',
-    value: sessionToken,
-    domain: '.opentable.com',
-    path: '/',
-  }]);
+  // Step 1: Get availability to find the slot hash
+  const availRes = await fetch('https://mobile-api.opentable.com/api/v3/restaurant/availability', {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({
+      rids: [Number(rid)],
+      dateTime,
+      partySize,
+      includeOffers: true,
+    }),
+  });
+  if (availRes.status === 401 || availRes.status === 403) {
+    return { success: false, error: 'auth_expired', authExpired: true };
+  }
+  if (!availRes.ok) {
+    return { success: false, error: `avail_http_${availRes.status}: ${(await availRes.text()).slice(0, 200)}` };
+  }
 
-  const timeBtn = page.locator(`button:has-text("${slot.displayTime}")`).first();
-  if (await timeBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-    await timeBtn.click();
-    await page.waitForTimeout(2000);
+  const availData = await availRes.json();
+  const availability = availData?.availability?.[String(rid)] ?? availData?.availability?.[Number(rid)];
+  if (!availability) {
+    return { success: false, error: 'no_availability_data' };
+  }
 
-    const completeBtn = page.locator('button:has-text("Complete"), button:has-text("Reserve")').first();
-    if (await completeBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await completeBtn.click();
-      await page.waitForTimeout(3000);
-
-      const bodyText = await page.evaluate(() => document.body.innerText.slice(0, 500));
-      return bodyText.toLowerCase().includes('confirmed') || bodyText.toLowerCase().includes('reservation');
+  // Find the matching time slot and its hash
+  const timeslots = availability?.timeslots ?? availability?.slots ?? [];
+  let slotHash = null;
+  for (const ts of timeslots) {
+    const tsTime = (ts.dateTime ?? ts.time ?? '').slice(11, 16);
+    if (tsTime === slot.time) {
+      slotHash = ts.hash ?? ts.slotHash ?? ts.slotLockHash;
+      break;
     }
   }
-  return false;
+  if (!slotHash) {
+    return { success: false, error: `no_hash_for_${slot.time}` };
+  }
+
+  // Step 2: Lock the reservation
+  const lockRes = await fetch(`https://mobile-api.opentable.com/api/v1/reservation/${rid}/lock`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      partySize,
+      dateTime,
+      hash: slotHash,
+      selectedDiningArea: { tableAttribute: 'default', diningAreaId: '1' },
+      attribution: { partnerId: '84' },
+    }),
+  });
+  if (lockRes.status === 401 || lockRes.status === 403) {
+    return { success: false, error: 'auth_expired', authExpired: true };
+  }
+  if (!lockRes.ok) {
+    return { success: false, error: `lock_http_${lockRes.status}: ${(await lockRes.text()).slice(0, 200)}` };
+  }
+
+  const lockData = await lockRes.json();
+  const lockId = lockData?.lockId ?? lockData?.id;
+  if (!lockId) {
+    return { success: false, error: 'no_lock_id' };
+  }
+
+  // Step 3: Complete the reservation
+  const completeRes = await fetch(`https://mobile-api.opentable.com/api/v1/reservation/${rid}`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      partySize,
+      dateTime,
+      lockId,
+      hash: slotHash,
+      selectedDiningArea: { tableAttribute: 'default', diningAreaId: '1' },
+      attribution: { partnerId: '84' },
+    }),
+  });
+  if (completeRes.status === 401 || completeRes.status === 403) {
+    return { success: false, error: 'auth_expired', authExpired: true };
+  }
+  if (!completeRes.ok) {
+    return { success: false, error: `complete_http_${completeRes.status}: ${(await completeRes.text()).slice(0, 200)}` };
+  }
+
+  const completeData = await completeRes.json();
+  const confirmationNumber = completeData?.confirmationNumber ?? completeData?.id ?? 'confirmed';
+  return { success: true, confirmationId: String(confirmationNumber) };
 }
 
 // ── Main ────────────────────────────────────────────────────────────
@@ -253,12 +322,9 @@ async function main() {
         const best = pickBestSlot(allSlots, restaurant.preferred_time);
         if (best) {
           try {
-            const ctx = await launchBrowser();
-            const bookingPage = await ctx.newPage();
-            const booked = await bookOpenTableSlot(bookingPage, restaurant, best, userSettings.opentable_session);
-            await bookingPage.close().catch(() => {});
-            if (booked) {
-              console.log(`[check] AUTO-BOOKED ${restaurant.name} at ${best.displayTime} on ${best.date}`);
+            const result = await bookOpenTableSlot(restaurant, best, userSettings.opentable_session);
+            if (result.success) {
+              console.log(`[check] AUTO-BOOKED ${restaurant.name} at ${best.displayTime} on ${best.date} (${result.confirmationId})`);
               await db.from('restaurants').update({ auto_book: false }).eq('id', restaurant.id);
               await db.from('activity_log').insert({
                 user_id: restaurant.user_id, restaurant_id: restaurant.id, type: 'system',
@@ -271,15 +337,18 @@ async function main() {
                   body: `${best.displayTime} on ${best.date}`,
                 });
               }
+            } else if (result.authExpired) {
+              console.error(`[check] auth expired for user ${restaurant.user_id}`);
+              await handleAuthExpired(restaurant.user_id, 'opentable');
             } else {
-              console.log(`[check] auto-book attempt for ${restaurant.name} did not confirm`);
+              console.error(`[check] booking failed for ${restaurant.name}: ${result.error}`);
               await db.from('activity_log').insert({
                 user_id: restaurant.user_id, restaurant_id: restaurant.id, type: 'system',
-                message: `Auto-book attempted for <strong>${restaurant.name}</strong> but could not confirm. Will retry next check.`,
+                message: `Auto-book failed for <strong>${restaurant.name}</strong>: ${result.error}. Will retry next check.`,
               });
             }
           } catch (err) {
-            console.error(`[check] OpenTable booking failed: ${err.message}`);
+            console.error(`[check] OpenTable booking error: ${err.message}`);
             await db.from('activity_log').insert({
               user_id: restaurant.user_id, restaurant_id: restaurant.id, type: 'system',
               message: `Auto-book error for <strong>${restaurant.name}</strong>: ${err.message}. Will retry next check.`,
