@@ -95,10 +95,12 @@ export async function resolveResyVenueId(
   // If it's already numeric, return as-is
   if (/^\d+$/.test(slugOrUrl.trim())) return slugOrUrl.trim();
 
-  // Extract slug from URL if needed
+  // Extract slug or numeric ID from URL if needed
   let slug = slugOrUrl.trim();
   try {
     const url = new URL(slugOrUrl);
+    const vid = url.searchParams.get('venue_id');
+    if (vid && /^\d+$/.test(vid)) return vid;
     const m = url.pathname.match(/\/venues\/([^/?#]+)/);
     if (m) slug = m[1];
   } catch {

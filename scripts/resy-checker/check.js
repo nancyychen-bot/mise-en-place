@@ -243,7 +243,7 @@ async function main() {
           hadError = true;
           console.error(`[resy-check] ${restaurant.name} ${date}/${size}: ${err.message}`);
         }
-        await sleep(300 + Math.random() * 300);
+        await sleep(800 + Math.random() * 400);
       }
     }
 

@@ -20,6 +20,10 @@ export function parseResyVenueInput(input: string): string {
   try {
     const url = new URL(trimmed);
     if (url.hostname.includes('resy.com')) {
+      // Share link: resy.com/link?venue_id=64593
+      const vid = url.searchParams.get('venue_id');
+      if (vid && /^\d+$/.test(vid)) return vid;
+
       // Path: /cities/{city}/venues/{slug}
       const match = url.pathname.match(/\/venues\/([^/?#]+)/);
       if (match) return match[1];
