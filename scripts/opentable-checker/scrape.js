@@ -165,34 +165,32 @@ export async function scrapeOpenTableMultiDate(restaurantId, dates, partySize) {
       const contentType = response.headers()['content-type'] ?? '';
       if (!contentType.includes('json')) return;
       const json = await response.json();
-      // Dump first availability response structure for debugging
-      if (url.includes('Availability') || url.includes('availability')) {
-        const sample = JSON.stringify(json).slice(0, 1500);
-        console.log(`[scrape] AVAIL RESPONSE: ${sample}`);
-      }
-      // Walk entire response tree to find any objects with slotHash
-      function extractTokens(obj, depth = 0) {
-        if (!obj || typeof obj !== 'object' || depth > 10) return;
-        if (obj.slotHash || obj.slotAvailabilityToken) {
-          const dt = obj.dateTime ?? obj.time ?? '';
-          const dateStr = dt.slice(0, 10);
-          const timeStr = dt.slice(11, 16);
-          if (dateStr && timeStr) {
-            slotTokens.set(`${dateStr}:${timeStr}`, {
-              slotHash: obj.slotHash,
-              slotAvailabilityToken: obj.slotAvailabilityToken,
-            });
+      // Extract slot tokens from RestRefAvailability responses
+      // Slots use timeOffsetMinutes relative to the requested time (19:00 = 1140 min)
+      const BASE_MINUTES = 19 * 60; // default request time is 19:00
+      const avail = json?.data?.availability;
+      if (Array.isArray(avail)) {
+        for (const restaurant of avail) {
+          for (const day of restaurant?.availabilityDays ?? []) {
+            const dayOffset = day?.dayOffset ?? 0;
+            for (const s of day?.slots ?? []) {
+              if (!s.isAvailable || !s.slotHash) continue;
+              const totalMinutes = BASE_MINUTES + (s.timeOffsetMinutes ?? 0);
+              const h = Math.floor(totalMinutes / 60);
+              const m = totalMinutes % 60;
+              const timeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+              // We store with a placeholder date key; the actual date is resolved
+              // when we attach tokens to scraped results by matching time
+              slotTokens.set(`*:${timeStr}`, {
+                slotHash: s.slotHash,
+                slotAvailabilityToken: s.slotAvailabilityToken,
+              });
+            }
           }
         }
-        if (Array.isArray(obj)) {
-          for (const item of obj) extractTokens(item, depth + 1);
-        } else {
-          for (const val of Object.values(obj)) extractTokens(val, depth + 1);
+        if (slotTokens.size > 0) {
+          console.log(`[scrape] captured ${slotTokens.size} slot token(s)`);
         }
-      }
-      extractTokens(json);
-      if (slotTokens.size > 0) {
-        console.log(`[scrape] captured ${slotTokens.size} slot token(s) from ${url.slice(0, 60)}`);
       }
     } catch {}
   });
@@ -255,17 +253,17 @@ export async function scrapeOpenTableMultiDate(restaurantId, dates, partySize) {
       }
     }
 
-    // Attach slot tokens to results
+    // Attach slot tokens to results (match by time since API uses offsets not dates)
     for (const [date, slots] of results) {
       for (const slot of slots) {
-        const key = `${date}:${slot.time}`;
-        const tokens = slotTokens.get(key);
+        const tokens = slotTokens.get(`${date}:${slot.time}`) ?? slotTokens.get(`*:${slot.time}`);
         if (tokens) {
           slot.slotHash = tokens.slotHash;
           slot.slotAvailabilityToken = tokens.slotAvailabilityToken;
         }
       }
     }
+    console.log(`[scrape] token map has ${slotTokens.size} entries, attached to slots`);
 
     return results;
   } catch (err) {
