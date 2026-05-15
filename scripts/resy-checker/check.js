@@ -198,22 +198,22 @@ function resyHeaders(apiKey, authToken) {
 }
 
 async function getBookingDetails(authToken, configId, day, partySize) {
-  const params = new URLSearchParams({ config_id: configId, day, party_size: String(partySize) });
+  const body = JSON.stringify({ config_id: configId, day, party_size: Number(partySize) });
 
   const response = await apiPage.evaluate(
-    async ({ params, apiKey, authToken }) => {
+    async ({ body, apiKey, authToken }) => {
       const res = await fetch('https://api.resy.com/3/details', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
+          'Content-Type': 'application/json',
           'Authorization': `ResyAPI api_key="${apiKey}"`,
           'x-resy-auth-token': authToken,
         },
-        body: params,
+        body,
       });
       return { status: res.status, body: await res.text() };
     },
-    { params: params.toString(), apiKey: resyApiKey, authToken }
+    { body, apiKey: resyApiKey, authToken }
   );
 
   if (response.status === 401 || response.status === 403) {
@@ -229,25 +229,25 @@ async function getBookingDetails(authToken, configId, day, partySize) {
 }
 
 async function bookSlot(authToken, bookToken, paymentMethodId) {
-  const params = new URLSearchParams({ book_token: bookToken });
+  const bodyObj = { book_token: bookToken };
   if (paymentMethodId != null) {
-    params.set('struct_payment_method', JSON.stringify({ id: paymentMethodId }));
+    bodyObj.struct_payment_method = JSON.stringify({ id: paymentMethodId });
   }
 
   const response = await apiPage.evaluate(
-    async ({ params, apiKey, authToken }) => {
+    async ({ body, apiKey, authToken }) => {
       const res = await fetch('https://api.resy.com/3/book', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
+          'Content-Type': 'application/json',
           'Authorization': `ResyAPI api_key="${apiKey}"`,
           'x-resy-auth-token': authToken,
         },
-        body: params,
+        body,
       });
       return { status: res.status, body: await res.text() };
     },
-    { params: params.toString(), apiKey: resyApiKey, authToken }
+    { body: JSON.stringify(bodyObj), apiKey: resyApiKey, authToken }
   );
 
   if (response.status === 401 || response.status === 403) {
