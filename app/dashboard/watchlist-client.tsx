@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { Restaurant, UserSettings, Slot } from '@/lib/types';
 import PreferencesBar from '@/components/preferences-bar';
+import PlatformHealth from '@/components/platform-health';
 import AddRestaurantForm from '@/components/add-restaurant-form';
 import RestaurantGrid from '@/components/restaurant-grid';
 
@@ -141,6 +142,7 @@ export default function WatchlistClient({
         watchingCount={restaurants.filter((r) => r.active).length}
         slotsFoundCount={slotsFoundToday}
       />
+      <PlatformHealth />
 
       <AddRestaurantForm
         onAdd={handleAdd}

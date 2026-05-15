@@ -1,11 +1,10 @@
-import Link from 'next/link';
 import type { UserSettings } from '@/lib/types';
 import { fmt12h } from '@/lib/time-filter';
 
 interface PreferencesBarProps {
   settings: Pick<
     UserSettings,
-    'earliestTime' | 'latestTime' | 'dayRange' | 'daysOfWeek' | 'checkIntervalMin' | 'activeHoursStart' | 'activeHoursEnd' | 'ntfyTopic'
+    'earliestTime' | 'latestTime' | 'dayRange' | 'daysOfWeek' | 'checkIntervalMin' | 'activeHoursStart' | 'activeHoursEnd'
   >;
   watchingCount: number;
   slotsFoundCount: number;
@@ -22,17 +21,13 @@ const DAYS_LABEL: Record<string, string> = {
 export default function PreferencesBar({ settings, watchingCount, slotsFoundCount }: PreferencesBarProps) {
   const {
     earliestTime, latestTime, dayRange, daysOfWeek,
-    checkIntervalMin, activeHoursStart, activeHoursEnd, ntfyTopic
+    checkIntervalMin, activeHoursStart, activeHoursEnd,
   } = settings;
 
   const prefs = [
     {
       label: 'Watching',
-      value: String(watchingCount),
-    },
-    {
-      label: 'Slots Found',
-      value: String(slotsFoundCount),
+      value: `${watchingCount} restaurants · ${slotsFoundCount} slot${slotsFoundCount !== 1 ? 's' : ''} found`,
     },
     {
       label: 'Time Window',
@@ -46,10 +41,6 @@ export default function PreferencesBar({ settings, watchingCount, slotsFoundCoun
       label: 'Check Interval',
       value: `Every ${checkIntervalMin} min · ${fmt12h(activeHoursStart)}–${fmt12h(activeHoursEnd)}`,
     },
-    {
-      label: 'Notifications',
-      value: ntfyTopic ? `ntfy: ${ntfyTopic}` : 'Not configured',
-    },
   ];
 
   return (
@@ -60,9 +51,9 @@ export default function PreferencesBar({ settings, watchingCount, slotsFoundCoun
         marginBottom: '32px',
         gap: '16px',
       }}
-      className="grid grid-cols-2 min-[720px]:grid-cols-3 min-[960px]:grid-cols-6"
+      className="grid grid-cols-2 min-[720px]:grid-cols-4"
     >
-      {prefs.map(({ label, value }, i) => (
+      {prefs.map(({ label, value }) => (
         <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <p
             style={{
@@ -85,21 +76,6 @@ export default function PreferencesBar({ settings, watchingCount, slotsFoundCoun
           >
             {value}
           </p>
-          {i === prefs.length - 1 && (
-            <Link
-              href="/dashboard/account"
-              style={{
-                fontSize: '11px',
-                color: 'var(--tag-red)',
-                marginTop: '2px',
-                fontWeight: 500,
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-              }}
-            >
-              Edit →
-            </Link>
-          )}
         </div>
       ))}
     </div>

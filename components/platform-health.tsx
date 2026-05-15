@@ -52,37 +52,25 @@ export default function PlatformHealth() {
 
   if (!health) return null;
 
+  const issues = ALL_PLATFORMS.filter((p) => {
+    const s = health[p]?.status;
+    return s === 'warning' || s === 'error';
+  });
+
+  if (issues.length === 0) return null;
+
   return (
     <div
       style={{
-        width: '100%',
-        borderBottom: '1px solid var(--border-hair)',
-        padding: '16px 0',
-        marginBottom: '24px',
+        display: 'flex',
+        gap: '16px',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        padding: '8px 0',
+        marginBottom: '8px',
       }}
     >
-      <div
-        style={{
-          fontSize: '10px',
-          fontWeight: 600,
-          letterSpacing: '0.1em',
-          textTransform: 'uppercase',
-          color: 'var(--text-muted)',
-          fontFamily: 'var(--font-family-sans)',
-          marginBottom: '12px',
-        }}
-      >
-        Platform Health
-      </div>
-      <div
-        style={{
-          display: 'flex',
-          gap: '20px',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-        }}
-      >
-      {ALL_PLATFORMS.map((platform) => {
+      {issues.map((platform) => {
         const entry = health[platform];
         const status = entry?.status ?? 'idle';
 
@@ -92,17 +80,9 @@ export default function PlatformHealth() {
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
+              gap: '6px',
             }}
-            title={
-              status === 'error' && entry?.error
-                ? `Error: ${entry.error}`
-                : status === 'idle'
-                  ? 'No active restaurants'
-                  : entry?.lastChecked
-                    ? `Last checked: ${new Date(entry.lastChecked).toLocaleString()}`
-                    : ''
-            }
+            title={entry?.error ? `Error: ${entry.error}` : ''}
           >
             <span
               style={{
@@ -116,30 +96,17 @@ export default function PlatformHealth() {
             />
             <span
               style={{
-                fontSize: '10px',
-                fontWeight: 600,
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase',
+                fontSize: '11px',
+                fontWeight: 500,
                 color: 'var(--text-muted)',
                 fontFamily: 'var(--font-family-sans)',
               }}
             >
-              {PLATFORM_LABELS[platform]}
+              {PLATFORM_LABELS[platform]} issues — talk to Nancy
             </span>
           </div>
         );
       })}
-      </div>
-      <div
-        style={{
-          fontSize: '12px',
-          color: 'var(--text-muted)',
-          marginTop: '12px',
-          fontFamily: 'var(--font-family-sans)',
-        }}
-      >
-        If a platform is red, it means you either have to swap out a new API key for Resy or there&apos;s a bug — talk to Nancy.
-      </div>
     </div>
   );
 }
