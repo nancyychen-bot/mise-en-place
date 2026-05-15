@@ -316,12 +316,13 @@ async function main() {
       const checkMsg = hadError
         ? `Checked <strong>${restaurant.name}</strong> — ${filtered.length} slot(s) available, 0 new (prev: 0) [err: ${throttled ? 'throttled' : 'partial'}]`
         : `Checked <strong>${restaurant.name}</strong> — ${filtered.length} slot(s) available, 0 new (prev: 0)`;
-      await db.from('activity_log').insert({
+      const { error: logErr } = await db.from('activity_log').insert({
         user_id: restaurant.user_id,
         restaurant_id: restaurant.id,
         type: 'check',
         message: checkMsg,
-      }).catch(() => {});
+      });
+      if (logErr) console.error(`[resy-check] activity_log insert failed: ${logErr.message}`);
     }
     console.log(`[resy-check] ${venue.name} — ${rawSlots.length} slot(s)${hadError ? ' (with errors)' : ''} → ${venue.restaurants.length} row(s)`);
     checked++;
