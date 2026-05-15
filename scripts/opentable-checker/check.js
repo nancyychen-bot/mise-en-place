@@ -93,114 +93,119 @@ async function handleAuthExpired(userId, platform) {
   });
 }
 
-function parseOtToken(cookieValue) {
+function parseOtCsrfToken(cookieValue) {
   const params = new URLSearchParams(cookieValue);
   return params.get('atk') ?? cookieValue;
 }
 
-async function bookOpenTableSlot(page, restaurant, slot, authToken) {
+async function bookOpenTableSlot(page, restaurant, slot, authCookie, userInfo) {
   const rid = restaurant.venue_id;
   const partySize = restaurant.party_sizes?.[0] ?? restaurant.party_size;
   const dateTime = `${slot.date}T${slot.time}`;
-  const token = parseOtToken(authToken);
+  const csrfToken = parseOtCsrfToken(authCookie);
 
-  // All API calls go through the browser page to leverage its cookies/session
-  async function apiCall(method, url, body) {
+  async function apiCall(url, body) {
     return page.evaluate(
-      async ({ method, url, body, token }) => {
+      async ({ url, body, csrfToken }) => {
         const res = await fetch(url, {
-          method,
+          method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
+            'x-csrf-token': csrfToken,
           },
-          body: body ? JSON.stringify(body) : undefined,
+          body: JSON.stringify(body),
         });
         return { status: res.status, body: await res.text() };
       },
-      { method, url, body, token }
+      { url, body, csrfToken }
     );
   }
 
-  // Step 1: Get availability to find the slot hash
-  const availRes = await apiCall('PUT', 'https://www.opentable.com/dapi/fe/gql', {
-    operationName: 'RestaurantsAvailability',
-    variables: {
-      onlyPop: false,
-      requestedCover: partySize,
-      date: slot.date,
-      time: slot.time,
-      restaurantIds: [Number(rid)],
-    },
-    extensions: { persistedQuery: { version: 1 } },
-  });
+  // Step 1: Get availability to find slotHash and slotAvailabilityToken
+  const availRes = await apiCall(
+    'https://www.opentable.com/dapi/fe/gql?optype=query&opname=RestaurantsAvailability',
+    {
+      operationName: 'RestaurantsAvailability',
+      variables: {
+        restaurantIds: [Number(rid)],
+        date: slot.date,
+        time: slot.time,
+        partySize,
+        databaseRegion: 'NA',
+      },
+      extensions: {
+        persistedQuery: {
+          sha256Hash: 'e6b87021ed6e865a7778aa39d35d09864c1be29c683c707602dd3de43c854d86',
+        },
+      },
+    }
+  );
 
-  // If GraphQL doesn't work, try the REST availability endpoint
+  if (availRes.status !== 200) {
+    return { success: false, error: `avail_http_${availRes.status}: ${availRes.body.slice(0, 200)}` };
+  }
+
   let slotHash = null;
-  if (availRes.status === 200) {
-    try {
-      const data = JSON.parse(availRes.body);
-      const results = data?.data?.restaurantsAvailability ?? data?.data?.availability ?? [];
-      for (const r of Array.isArray(results) ? results : [results]) {
-        const timeslots = r?.timeslots ?? r?.slots ?? r?.availabilityDays?.[0]?.slots ?? [];
-        for (const ts of timeslots) {
-          const tsTime = (ts.dateTime ?? ts.time ?? ts.startDateTime ?? '').slice(11, 16);
-          if (tsTime === slot.time) {
-            slotHash = ts.hash ?? ts.slotHash ?? ts.slotLockHash ?? ts.token;
-            break;
-          }
+  let slotAvailabilityToken = null;
+  try {
+    const data = JSON.parse(availRes.body);
+    const restaurant = data?.data?.restaurantsAvailability?.[0] ?? {};
+    const days = restaurant?.availabilityDays ?? [];
+    for (const day of days) {
+      for (const s of day?.slots ?? []) {
+        if (!s.isAvailable) continue;
+        const tsTime = (s.dateTime ?? s.time ?? '').slice(11, 16);
+        if (tsTime === slot.time) {
+          slotHash = s.slotHash;
+          slotAvailabilityToken = s.slotAvailabilityToken;
+          break;
         }
-        if (slotHash) break;
       }
-    } catch {}
+      if (slotHash) break;
+    }
+  } catch {}
+
+  if (!slotHash || !slotAvailabilityToken) {
+    return { success: false, error: `no_slot_tokens: avail=${availRes.status}, body=${availRes.body.slice(0, 200)}` };
   }
 
-  // Fallback: try REST availability endpoint
-  if (!slotHash) {
-    const restAvailRes = await apiCall('GET',
-      `https://www.opentable.com/dapi/booking/availability/${rid}?partySize=${partySize}&date=${slot.date}&time=${slot.time}`,
-      null
-    );
-    if (restAvailRes.status === 200) {
-      try {
-        const data = JSON.parse(restAvailRes.body);
-        const timeslots = data?.timeslots ?? data?.availability?.timeslots ?? data?.slots ?? [];
-        for (const ts of timeslots) {
-          const tsTime = (ts.dateTime ?? ts.time ?? '').slice(11, 16);
-          if (tsTime === slot.time) {
-            slotHash = ts.hash ?? ts.slotHash ?? ts.slotLockHash ?? ts.token;
-            break;
-          }
-        }
-      } catch {}
+  // Step 2: Make reservation
+  const bookRes = await apiCall(
+    'https://www.opentable.com/dapi/booking/make-reservation',
+    {
+      restaurantId: Number(rid),
+      slotAvailabilityToken,
+      slotHash,
+      isModify: false,
+      reservationDateTime: dateTime,
+      partySize,
+      firstName: userInfo.firstName || 'Guest',
+      lastName: userInfo.lastName || '',
+      email: userInfo.email || '',
+      phoneNumber: userInfo.phone || '',
+      phoneNumberCountryId: 'US',
+      country: 'US',
+      reservationType: 'Standard',
+      reservationAttribute: 'default',
+      diningAreaId: 1,
+      pointsType: 'Standard',
+      points: 100,
+      optInEmailRestaurant: false,
     }
-    if (!slotHash) {
-      return { success: false, error: `no_hash: avail=${availRes.status}, rest=${restAvailRes.status}` };
-    }
-  }
+  );
 
-  // Step 2: Lock the reservation
-  const lockRes = await apiCall('POST', `https://www.opentable.com/dapi/booking/make-reservation`, {
-    restaurantId: Number(rid),
-    partySize,
-    dateTime,
-    hash: slotHash,
-    selectedDiningArea: { tableAttribute: 'default' },
-    attribution: { partnerId: '84' },
-  });
-
-  if (lockRes.status === 401 || lockRes.status === 403) {
+  if (bookRes.status === 401 || bookRes.status === 403) {
     return { success: false, error: 'auth_expired', authExpired: true };
   }
 
-  let lockData;
-  try { lockData = JSON.parse(lockRes.body); } catch {}
+  let bookData;
+  try { bookData = JSON.parse(bookRes.body); } catch {}
 
-  if (lockRes.status >= 400) {
-    return { success: false, error: `lock_http_${lockRes.status}: ${lockRes.body.slice(0, 300)}` };
+  if (bookRes.status >= 400) {
+    return { success: false, error: `book_http_${bookRes.status}: ${bookRes.body.slice(0, 300)}` };
   }
 
-  const confirmationNumber = lockData?.confirmationNumber ?? lockData?.reservation?.confirmationNumber ?? lockData?.id ?? 'confirmed';
+  const confirmationNumber = bookData?.confirmationNumber ?? bookData?.reservation?.confirmationNumber ?? 'confirmed';
   return { success: true, confirmationId: String(confirmationNumber) };
 }
 
@@ -335,8 +340,21 @@ async function main() {
         const best = pickBestSlot(allSlots, restaurant.preferred_time);
         if (best) {
           try {
+            // Load user profile for reservation details
+            const { data: userProfile } = await db
+              .from('users')
+              .select('email, display_name')
+              .eq('id', restaurant.user_id)
+              .single();
+            const nameParts = (userProfile?.display_name ?? '').split(' ');
+            const userInfo = {
+              firstName: nameParts[0] || 'Guest',
+              lastName: nameParts.slice(1).join(' ') || '',
+              email: userProfile?.email || '',
+              phone: '',
+            };
+
             const ctx = await launchBrowser();
-            // Inject auth cookie into browser context
             await ctx.addCookies([{
               name: 'authCke',
               value: userSettings.opentable_session,
@@ -346,7 +364,7 @@ async function main() {
             const bookingPage = await ctx.newPage();
             await bookingPage.goto('https://www.opentable.com', { waitUntil: 'domcontentloaded', timeout: 30000 });
             await bookingPage.waitForTimeout(2000);
-            const result = await bookOpenTableSlot(bookingPage, restaurant, best, userSettings.opentable_session);
+            const result = await bookOpenTableSlot(bookingPage, restaurant, best, userSettings.opentable_session, userInfo);
             await bookingPage.close().catch(() => {});
             if (result.success) {
               console.log(`[check] AUTO-BOOKED ${restaurant.name} at ${best.displayTime} on ${best.date} (${result.confirmationId})`);
