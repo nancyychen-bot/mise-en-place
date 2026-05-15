@@ -253,17 +253,22 @@ export async function scrapeOpenTableMultiDate(restaurantId, dates, partySize) {
       }
     }
 
+    // Wait a moment for any in-flight response handlers to complete
+    await page.waitForTimeout(1000);
+
     // Attach slot tokens to results (match by time since API uses offsets not dates)
+    let attached = 0;
     for (const [date, slots] of results) {
       for (const slot of slots) {
         const tokens = slotTokens.get(`${date}:${slot.time}`) ?? slotTokens.get(`*:${slot.time}`);
         if (tokens) {
           slot.slotHash = tokens.slotHash;
           slot.slotAvailabilityToken = tokens.slotAvailabilityToken;
+          attached++;
         }
       }
     }
-    console.log(`[scrape] token map has ${slotTokens.size} entries, attached to slots`);
+    console.log(`[scrape] token map has ${slotTokens.size} entries, attached ${attached} to slots`);
 
     return results;
   } catch (err) {
