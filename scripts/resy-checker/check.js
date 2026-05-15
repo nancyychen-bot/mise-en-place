@@ -96,6 +96,18 @@ async function warmUpImperva() {
   apiPage = page;
 }
 
+async function rewarmImperva() {
+  if (apiPage) await apiPage.close().catch(() => {});
+  apiPage = await context.newPage();
+  await apiPage.goto('https://resy.com', { waitUntil: 'domcontentloaded', timeout: 30000 });
+  try { await apiPage.waitForLoadState('networkidle', { timeout: 15000 }); } catch {}
+  await sleep(3000);
+  await apiPage.setExtraHTTPHeaders({
+    Authorization: `ResyAPI api_key="${resyApiKey}"`,
+  });
+  console.log('[resy-check] re-warmed Imperva — fresh session');
+}
+
 function isoToTime(iso) {
   const parts = iso.split(' ');
   const timePart = parts[1] ?? iso.split('T')[1] ?? '';
@@ -231,10 +243,12 @@ async function main() {
 
     const allSlots = [];
     let hadError = false;
+    let consecutiveFailures = 0;
     for (const date of dates) {
       for (const size of sizes) {
         try {
           const slots = await findResyAvailability(restaurant.venue_id, date, size, city);
+          consecutiveFailures = 0;
           for (const slot of slots) {
             if (!inWindow(slot.time, earliest, latest)) continue;
             allSlots.push(slot);
@@ -242,6 +256,14 @@ async function main() {
         } catch (err) {
           hadError = true;
           console.error(`[resy-check] ${restaurant.name} ${date}/${size}: ${err.message}`);
+          if (err.message.includes('ERR_HTTP_RESPONSE_CODE_FAILURE') || err.message.includes('http_5')) {
+            consecutiveFailures++;
+            if (consecutiveFailures >= 3) {
+              console.log('[resy-check] 3 consecutive failures — re-warming Imperva');
+              await rewarmImperva();
+              consecutiveFailures = 0;
+            }
+          }
         }
         await sleep(800 + Math.random() * 400);
       }
