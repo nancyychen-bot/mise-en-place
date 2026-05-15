@@ -165,36 +165,29 @@ export async function scrapeOpenTableMultiDate(restaurantId, dates, partySize) {
       const contentType = response.headers()['content-type'] ?? '';
       if (!contentType.includes('json')) return;
       const json = await response.json();
-      console.log(`[scrape] intercepted ${url.slice(0, 80)} — keys: ${Object.keys(json?.data ?? json).join(',').slice(0, 100)}`);
-      // Handle GraphQL availability response
-      const restaurants = json?.data?.restaurantsAvailability ?? json?.data?.availability ?? [];
-      for (const r of Array.isArray(restaurants) ? restaurants : [restaurants]) {
-        for (const day of r?.availabilityDays ?? []) {
-          for (const s of day?.slots ?? []) {
-            if (!s.isAvailable) continue;
-            const dt = s.dateTime ?? s.time ?? '';
-            const dateStr = dt.slice(0, 10);
-            const timeStr = dt.slice(11, 16);
-            if (dateStr && timeStr && (s.slotHash || s.slotAvailabilityToken)) {
-              slotTokens.set(`${dateStr}:${timeStr}`, {
-                slotHash: s.slotHash,
-                slotAvailabilityToken: s.slotAvailabilityToken,
-              });
-            }
-          }
-        }
-        // Also check flat slots array
-        for (const s of r?.timeslots ?? r?.slots ?? []) {
-          const dt = s.dateTime ?? s.time ?? '';
+      // Walk entire response tree to find any objects with slotHash
+      function extractTokens(obj, depth = 0) {
+        if (!obj || typeof obj !== 'object' || depth > 10) return;
+        if (obj.slotHash || obj.slotAvailabilityToken) {
+          const dt = obj.dateTime ?? obj.time ?? '';
           const dateStr = dt.slice(0, 10);
           const timeStr = dt.slice(11, 16);
-          if (dateStr && timeStr && (s.slotHash || s.slotAvailabilityToken)) {
+          if (dateStr && timeStr) {
             slotTokens.set(`${dateStr}:${timeStr}`, {
-              slotHash: s.slotHash,
-              slotAvailabilityToken: s.slotAvailabilityToken,
+              slotHash: obj.slotHash,
+              slotAvailabilityToken: obj.slotAvailabilityToken,
             });
           }
         }
+        if (Array.isArray(obj)) {
+          for (const item of obj) extractTokens(item, depth + 1);
+        } else {
+          for (const val of Object.values(obj)) extractTokens(val, depth + 1);
+        }
+      }
+      extractTokens(json);
+      if (slotTokens.size > 0) {
+        console.log(`[scrape] captured ${slotTokens.size} slot token(s) from ${url.slice(0, 60)}`);
       }
     } catch {}
   });
