@@ -6,7 +6,7 @@ import type { Platform } from '@/lib/types';
 const ALL_PLATFORMS: Platform[] = ['resy', 'opentable', 'sevenrooms', 'tock'];
 
 interface PlatformStatus {
-  status: 'ok' | 'error' | 'idle';
+  status: 'ok' | 'warning' | 'error' | 'idle';
   lastChecked: string | null;
   error?: string;
 }
@@ -15,45 +15,42 @@ export async function GET() {
   const user = await requireUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  // Get user's active restaurants grouped by platform
+  // Get ALL active restaurants grouped by platform (across all users)
   const { data: restaurants, error: restErr } = await db
     .from('restaurants')
-    .select('id, platform')
-    .eq('user_id', user.id)
+    .select('id, platform, user_id')
     .eq('active', true);
 
   if (restErr) return NextResponse.json({ error: restErr.message }, { status: 500 });
 
   // Group restaurant IDs by platform
-  const platformRestaurants = new Map<Platform, string[]>();
+  const platformRestaurants = new Map<Platform, { id: string; user_id: string }[]>();
   for (const r of restaurants ?? []) {
-    const ids = platformRestaurants.get(r.platform) ?? [];
-    ids.push(r.id);
-    platformRestaurants.set(r.platform, ids);
+    const entries = platformRestaurants.get(r.platform) ?? [];
+    entries.push({ id: r.id, user_id: r.user_id });
+    platformRestaurants.set(r.platform, entries);
   }
 
   const result: Record<string, PlatformStatus> = {};
 
   for (const platform of ALL_PLATFORMS) {
-    const restaurantIds = platformRestaurants.get(platform);
+    const entries = platformRestaurants.get(platform);
 
-    if (!restaurantIds || restaurantIds.length === 0) {
+    if (!entries || entries.length === 0) {
       result[platform] = { status: 'idle', lastChecked: null };
       continue;
     }
 
-    // For each restaurant on this platform, get its most recent check.
-    // Only flag the platform red if EVERY restaurant's latest check has an error.
     let lastChecked: string | null = null;
     let totalRestaurants = 0;
     let failedRestaurants = 0;
     let lastError = '';
 
-    for (const rid of restaurantIds) {
+    for (const { id: rid, user_id: rUserId } of entries) {
       const { data: logs } = await db
         .from('activity_log')
         .select('message, created_at')
-        .eq('user_id', user.id)
+        .eq('user_id', rUserId)
         .eq('type', 'check')
         .eq('restaurant_id', rid)
         .order('created_at', { ascending: false })
@@ -71,10 +68,15 @@ export async function GET() {
 
     if (totalRestaurants === 0) {
       result[platform] = { status: 'idle', lastChecked: null };
-    } else if (failedRestaurants === totalRestaurants) {
-      result[platform] = { status: 'error', lastChecked, error: lastError || 'unknown' };
     } else {
-      result[platform] = { status: 'ok', lastChecked };
+      const failRate = failedRestaurants / totalRestaurants;
+      if (failRate >= 0.5) {
+        result[platform] = { status: 'error', lastChecked, error: lastError || 'unknown' };
+      } else if (failRate >= 0.25) {
+        result[platform] = { status: 'warning', lastChecked, error: lastError || 'unknown' };
+      } else {
+        result[platform] = { status: 'ok', lastChecked };
+      }
     }
   }
 

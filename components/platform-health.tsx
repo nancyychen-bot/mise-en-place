@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import type { Platform } from '@/lib/types';
 
 interface PlatformStatus {
-  status: 'ok' | 'error' | 'idle';
+  status: 'ok' | 'warning' | 'error' | 'idle';
   lastChecked: string | null;
   error?: string;
 }
@@ -20,6 +20,7 @@ const ALL_PLATFORMS: Platform[] = ['resy', 'opentable', 'sevenrooms', 'tock'];
 
 function dotColor(status: string): string {
   if (status === 'ok') return 'var(--tag-green)';
+  if (status === 'warning') return 'var(--tag-yellow, #f59e0b)';
   if (status === 'error') return 'var(--tag-red)';
   return 'var(--text-muted)';
 }
