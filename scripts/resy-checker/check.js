@@ -193,20 +193,7 @@ async function main() {
     console.log('[resy-check] no active Resy restaurants');
     return;
   }
-  // Parse --batch flag: "1/3" means batch 1 of 3
   const batchArg = process.argv.find(a => a.startsWith('--batch='));
-  if (batchArg) {
-    const [batchNum, batchTotal] = batchArg.split('=')[1].split('/').map(Number);
-    // Stable sort by ID before slicing so batches don't overlap
-    restaurants.sort((a, b) => a.id.localeCompare(b.id));
-    const perBatch = Math.ceil(restaurants.length / batchTotal);
-    const start = (batchNum - 1) * perBatch;
-    restaurants = restaurants.slice(start, start + perBatch);
-    console.log(`[resy-check] batch ${batchNum}/${batchTotal}: ${restaurants.length} restaurant(s)`);
-  }
-
-  shuffle(restaurants);
-  console.log(`[resy-check] ${restaurants.length} restaurant(s) (shuffled)`);
 
   const userIds = [...new Set(restaurants.map((r) => r.user_id))];
   const { data: allSettings, error: settingsErr } = await db
@@ -220,21 +207,16 @@ async function main() {
   const settingsMap = new Map();
   for (const s of allSettings ?? []) settingsMap.set(s.user_id, s);
 
-  await launchBrowser();
-  await warmUpImperva();
-
-  let checked = 0;
+  // Group restaurants by venue_id — fetch once per venue, write to all rows
+  const venueMap = new Map(); // venue_id → { city, restaurants: [...], maxDayRange, allSizes, allDates }
   for (const restaurant of restaurants) {
     const settings = settingsMap.get(restaurant.user_id);
     if (!settings || !settings.monitoring_enabled) continue;
 
     const tz = settings.timezone ?? 'America/New_York';
-    const earliest = restaurant.earliest_time || settings.earliest_time;
-    const latest = restaurant.latest_time || settings.latest_time;
     const sizes = Array.isArray(restaurant.party_sizes) && restaurant.party_sizes.length > 0
       ? restaurant.party_sizes
       : [restaurant.party_size];
-    const city = restaurant.venue_city ?? 'ny';
 
     let dates;
     if (restaurant.date_start && restaurant.date_end) {
@@ -249,7 +231,45 @@ async function main() {
       dates = getDateRange(dayRange, tz);
     }
 
-    const allSlots = [];
+    const existing = venueMap.get(restaurant.venue_id);
+    if (existing) {
+      existing.restaurants.push({ restaurant, settings });
+      for (const s of sizes) { if (!existing.allSizes.has(s)) existing.allSizes.add(s); }
+      for (const d of dates) { if (!existing.allDates.has(d)) existing.allDates.add(d); }
+    } else {
+      venueMap.set(restaurant.venue_id, {
+        city: restaurant.venue_city ?? 'ny',
+        name: restaurant.name,
+        restaurants: [{ restaurant, settings }],
+        allSizes: new Set(sizes),
+        allDates: new Set(dates),
+      });
+    }
+  }
+
+  let uniqueVenues = [...venueMap.entries()];
+  // Batch slicing on unique venues
+  if (batchArg) {
+    const [batchNum, batchTotal] = batchArg.split('=')[1].split('/').map(Number);
+    uniqueVenues.sort((a, b) => a[0].localeCompare(b[0]));
+    const perBatch = Math.ceil(uniqueVenues.length / batchTotal);
+    const start = (batchNum - 1) * perBatch;
+    uniqueVenues = uniqueVenues.slice(start, start + perBatch);
+    console.log(`[resy-check] batch ${batchNum}/${batchTotal}: ${uniqueVenues.length} venue(s)`);
+  }
+  shuffle(uniqueVenues);
+  console.log(`[resy-check] ${restaurants.length} restaurant(s) → ${uniqueVenues.length} unique venue(s)`);
+
+  await launchBrowser();
+  await warmUpImperva();
+
+  let checked = 0;
+  for (const [venueId, venue] of uniqueVenues) {
+    const dates = [...venue.allDates].sort();
+    const sizes = [...venue.allSizes];
+
+    // Fetch all slots for this venue (union of all users' date/size needs)
+    const rawSlots = [];
     let hadError = false;
     let consecutiveFailures = 0;
     let throttled = false;
@@ -257,19 +277,16 @@ async function main() {
       if (throttled) break;
       for (const size of sizes) {
         try {
-          const slots = await findResyAvailability(restaurant.venue_id, date, size, city);
+          const slots = await findResyAvailability(venueId, date, size, venue.city);
           consecutiveFailures = 0;
-          for (const slot of slots) {
-            if (!inWindow(slot.time, earliest, latest)) continue;
-            allSlots.push(slot);
-          }
+          rawSlots.push(...slots);
         } catch (err) {
           hadError = true;
-          console.error(`[resy-check] ${restaurant.name} ${date}/${size}: ${err.message}`);
+          console.error(`[resy-check] ${venue.name} ${date}/${size}: ${err.message}`);
           if (err.message.includes('ERR_HTTP_RESPONSE_CODE_FAILURE') || err.message.includes('http_5')) {
             consecutiveFailures++;
             if (consecutiveFailures >= 3) {
-              console.log(`[resy-check] ${restaurant.name}: throttled — skipping remaining dates`);
+              console.log(`[resy-check] ${venue.name}: throttled — skipping remaining dates`);
               throttled = true;
               break;
             }
@@ -279,26 +296,28 @@ async function main() {
       }
     }
 
+    // Distribute results to each restaurant row, filtered by that user's time window
     const now = new Date().toISOString();
-    const { error: updateErr } = await db
-      .from('restaurants')
-      .update({
-        available_slots: allSlots,
-        last_checked: now,
-        slots_updated_at: now,
-      })
-      .eq('id', restaurant.id);
+    for (const { restaurant, settings } of venue.restaurants) {
+      const earliest = restaurant.earliest_time || settings.earliest_time;
+      const latest = restaurant.latest_time || settings.latest_time;
+      const filtered = rawSlots.filter(s => inWindow(s.time, earliest, latest));
 
-    if (updateErr) {
-      console.error(`[resy-check] update failed for ${restaurant.name}: ${updateErr.message}`);
-    } else {
-      console.log(`[resy-check] ${restaurant.name} — ${allSlots.length} slot(s)${hadError ? ' (with errors)' : ''}`);
+      const { error: updateErr } = await db
+        .from('restaurants')
+        .update({ available_slots: filtered, last_checked: now, slots_updated_at: now })
+        .eq('id', restaurant.id);
+
+      if (updateErr) {
+        console.error(`[resy-check] update failed for ${restaurant.name}: ${updateErr.message}`);
+      }
     }
+    console.log(`[resy-check] ${venue.name} — ${rawSlots.length} slot(s)${hadError ? ' (with errors)' : ''} → ${venue.restaurants.length} row(s)`);
     checked++;
   }
 
   await closeBrowser();
-  console.log(`[resy-check] done — checked ${checked}`);
+  console.log(`[resy-check] done — checked ${checked} venue(s)`);
 }
 
 main().catch((err) => {
