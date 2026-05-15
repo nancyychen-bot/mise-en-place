@@ -199,27 +199,27 @@ function resyHeaders(apiKey, authToken) {
 
 async function getBookingDetails(authToken, configId, day, partySize) {
   const params = new URLSearchParams({ config_id: configId, day, party_size: String(partySize) });
-  const url = `https://api.resy.com/3/details`;
 
   const response = await apiPage.evaluate(
-    async ({ url, params, authToken }) => {
-      const res = await fetch(url, {
+    async ({ params, apiKey, authToken }) => {
+      const res = await fetch('https://api.resy.com/3/details', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': `ResyAPI api_key="${apiKey}"`,
           'x-resy-auth-token': authToken,
         },
         body: params,
       });
       return { status: res.status, body: await res.text() };
     },
-    { url, params: params.toString(), authToken }
+    { params: params.toString(), apiKey: resyApiKey, authToken }
   );
 
   if (response.status === 401 || response.status === 403) {
     throw Object.assign(new Error('RESY_AUTH_EXPIRED'), { authExpired: true });
   }
-  if (response.status >= 400) throw new Error(`details_http_${response.status}`);
+  if (response.status >= 400) throw new Error(`details_http_${response.status}: ${response.body.slice(0, 200)}`);
 
   const data = JSON.parse(response.body);
   const bookToken = data?.book_token?.value;
@@ -235,18 +235,19 @@ async function bookSlot(authToken, bookToken, paymentMethodId) {
   }
 
   const response = await apiPage.evaluate(
-    async ({ url, params, authToken }) => {
-      const res = await fetch(url, {
+    async ({ params, apiKey, authToken }) => {
+      const res = await fetch('https://api.resy.com/3/book', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': `ResyAPI api_key="${apiKey}"`,
           'x-resy-auth-token': authToken,
         },
         body: params,
       });
       return { status: res.status, body: await res.text() };
     },
-    { url: 'https://api.resy.com/3/book', params: params.toString(), authToken }
+    { params: params.toString(), apiKey: resyApiKey, authToken }
   );
 
   if (response.status === 401 || response.status === 403) {
