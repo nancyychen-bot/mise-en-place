@@ -1,4 +1,5 @@
 import { db } from './db';
+import { findResyAvailability } from './resy';
 import { findSevenRoomsAvailability } from './sevenrooms';
 import { findTockAvailability } from './tock';
 import { sendNotification } from './ntfy';
@@ -49,6 +50,7 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
   if (restErr) throw new Error(`Failed to load restaurants: ${restErr.message}`);
   if (!restaurants?.length) throw new Error(`No active restaurants found on your watchlist.`);
 
+  const apiKey: string = process.env.RESY_API_KEY ?? settings.resy_api_key ?? '';
   const dates = getDateRange(settings.day_range, settings.days_of_week, tz);
 
   const withTimeout = <T>(p: Promise<T>): Promise<T> =>
@@ -89,16 +91,18 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
         const combos = effectiveDates.flatMap(date => sizes.map(size => ({ date, size })));
 
         let fetchError = '';
-        // OpenTable and Resy availability is populated by external checkers
-        // (GitHub Actions) that write directly to available_slots — skip the
-        // API call and use whatever is already there.
-        const slotsByDate = (restaurant.platform === 'opentable' || restaurant.platform === 'resy')
+        // OpenTable availability is populated by the local Playwright checker —
+        // skip the API call and use whatever is already in available_slots.
+        const slotsByDate = restaurant.platform === 'opentable'
           ? [prevSlots]
           : await Promise.all(
               combos.map(async ({ date, size }) => {
                 let slots: Slot[] = [];
                 try {
-                  if (restaurant.platform === 'sevenrooms') {
+                  if (restaurant.platform === 'resy') {
+                    if (!apiKey) return [];
+                    slots = await withTimeout(findResyAvailability(apiKey, restaurant.venue_id, date, size));
+                  } else if (restaurant.platform === 'sevenrooms') {
                     slots = await withTimeout(findSevenRoomsAvailability(
                       restaurant.venue_id, date, size
                     ));
@@ -128,12 +132,13 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
           }
         }
 
-        // Save ALL current slots for display + dedup on next run
-        const { error: updateErr } = await db.from('restaurants').update({
-          last_checked: checkedAt.toISOString(),
-          available_slots: allSlotsInWindow,
-          slots_updated_at: checkedAt.toISOString(),
-        }).eq('id', restaurant.id);
+        // For Resy: if every fetch errored, don't overwrite available_slots —
+        // the GH Actions backup checker may have populated them.
+        const allFetchesFailed = fetchError && allSlotsInWindow.length === 0 && restaurant.platform === 'resy';
+        const updatePayload = allFetchesFailed
+          ? { last_checked: checkedAt.toISOString() }
+          : { last_checked: checkedAt.toISOString(), available_slots: allSlotsInWindow, slots_updated_at: checkedAt.toISOString() };
+        const { error: updateErr } = await db.from('restaurants').update(updatePayload).eq('id', restaurant.id);
 
         if (updateErr) {
           console.error(`[checker] failed to save available_slots for ${restaurant.id}:`, updateErr.message);
@@ -245,4 +250,41 @@ async function detectPlatformTransitions(
   }
 
   await db.from('user_settings').update({ platform_health: next }).eq('user_id', userId);
+
+  // Check Resy failure rate over the last hour — notify admin if >50%
+  const resyStats = byPlatform.get('resy');
+  if (resyStats && resyStats.errored > 0) {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { data: recentLogs } = await db
+      .from('activity_log')
+      .select('message')
+      .eq('user_id', userId)
+      .eq('type', 'check')
+      .gte('created_at', oneHourAgo);
+
+    if (recentLogs && recentLogs.length > 0) {
+      const resyLogs = recentLogs.filter((l: { message: string }) =>
+        l.message.includes('[err:') || !l.message.includes('[err:')
+      );
+      const resyErrors = recentLogs.filter((l: { message: string }) => l.message.includes('[err:'));
+      const failRate = resyErrors.length / recentLogs.length;
+
+      if (failRate > 0.5) {
+        const lastNotified = (settings.platform_health as Record<string, unknown>)?.resy_failure_notified_at as string | undefined;
+        const cooldown = lastNotified ? Date.now() - new Date(lastNotified).getTime() > 60 * 60 * 1000 : true;
+
+        if (cooldown) {
+          await sendNotification(
+            'miseenplacefailure',
+            'Resy failure rate >50%',
+            `${resyErrors.length}/${recentLogs.length} checks failed in the last hour (${Math.round(failRate * 100)}%)`,
+            'high',
+          );
+          await db.from('user_settings').update({
+            platform_health: { ...next, resy_failure_notified_at: new Date().toISOString() },
+          }).eq('user_id', userId);
+        }
+      }
+    }
+  }
 }
