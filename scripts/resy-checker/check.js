@@ -310,7 +310,7 @@ async function main() {
   const userIds = [...new Set(restaurants.map((r) => r.user_id))];
   const { data: allSettings, error: settingsErr } = await db
     .from('user_settings')
-    .select('user_id, earliest_time, latest_time, day_range, days_of_week, timezone, monitoring_enabled')
+    .select('user_id, earliest_time, latest_time, day_range, days_of_week, timezone, monitoring_enabled, ntfy_topic, ntfy_priority')
     .in('user_id', userIds);
   if (settingsErr) {
     console.error('[resy-check] settings load failed:', settingsErr.message);
