@@ -197,42 +197,66 @@ function resyHeaders(apiKey, authToken) {
   };
 }
 
-async function getBookingDetails(apiKey, authToken, configId, day, partySize) {
+async function getBookingDetails(authToken, configId, day, partySize) {
   const params = new URLSearchParams({ config_id: configId, day, party_size: String(partySize) });
-  const res = await fetch('https://api.resy.com/3/details', {
-    method: 'POST',
-    headers: resyHeaders(apiKey, authToken),
-    body: params.toString(),
-  });
-  if (res.status === 401 || res.status === 403) {
+  const url = `https://api.resy.com/3/details`;
+
+  const response = await apiPage.evaluate(
+    async ({ url, params, authToken }) => {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'x-resy-auth-token': authToken,
+        },
+        body: params,
+      });
+      return { status: res.status, body: await res.text() };
+    },
+    { url, params: params.toString(), authToken }
+  );
+
+  if (response.status === 401 || response.status === 403) {
     throw Object.assign(new Error('RESY_AUTH_EXPIRED'), { authExpired: true });
   }
-  if (!res.ok) throw new Error(`details_http_${res.status}`);
-  const data = await res.json();
+  if (response.status >= 400) throw new Error(`details_http_${response.status}`);
+
+  const data = JSON.parse(response.body);
   const bookToken = data?.book_token?.value;
   if (!bookToken) throw new Error('no_book_token');
   const paymentMethodId = data?.user?.payment_methods?.[0]?.id ?? null;
   return { bookToken, paymentMethodId };
 }
 
-async function bookSlot(apiKey, authToken, bookToken, paymentMethodId) {
+async function bookSlot(authToken, bookToken, paymentMethodId) {
   const params = new URLSearchParams({ book_token: bookToken });
   if (paymentMethodId != null) {
     params.set('struct_payment_method', JSON.stringify({ id: paymentMethodId }));
   }
-  const res = await fetch('https://api.resy.com/3/book', {
-    method: 'POST',
-    headers: resyHeaders(apiKey, authToken),
-    body: params.toString(),
-  });
-  if (res.status === 401 || res.status === 403) {
+
+  const response = await apiPage.evaluate(
+    async ({ url, params, authToken }) => {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'x-resy-auth-token': authToken,
+        },
+        body: params,
+      });
+      return { status: res.status, body: await res.text() };
+    },
+    { url: 'https://api.resy.com/3/book', params: params.toString(), authToken }
+  );
+
+  if (response.status === 401 || response.status === 403) {
     return { success: false, error: 'auth_expired', authExpired: true };
   }
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    return { success: false, error: `http_${res.status}: ${text.slice(0, 200)}` };
+  if (response.status >= 400) {
+    return { success: false, error: `http_${response.status}: ${response.body.slice(0, 200)}` };
   }
-  const data = await res.json();
+
+  const data = JSON.parse(response.body);
   return { success: true, confirmationId: data?.resy_token ?? 'confirmed' };
 }
 
@@ -437,10 +461,10 @@ async function main() {
           if (best?.bookingToken) {
             try {
               const details = await getBookingDetails(
-                resyApiKey, authToken, best.bookingToken, best.date,
+                authToken, best.bookingToken, best.date,
                 restaurant.party_sizes?.[0] ?? restaurant.party_size
               );
-              const result = await bookSlot(resyApiKey, authToken, details.bookToken, details.paymentMethodId);
+              const result = await bookSlot(authToken, details.bookToken, details.paymentMethodId);
               if (result.success) {
                 console.log(`[resy-check] AUTO-BOOKED ${restaurant.name} at ${best.displayTime} on ${best.date}`);
                 await db.from('restaurants').update({ auto_book: false }).eq('id', restaurant.id);
