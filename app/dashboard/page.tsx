@@ -7,15 +7,9 @@ export default async function DashboardPage() {
   const user = await getCurrentUser();
   if (!user) redirect('/signin');
 
-  const [{ data: restaurants }, { data: settings }, { data: activity }] = await Promise.all([
+  const [{ data: restaurants }, { data: settings }] = await Promise.all([
     db.from('restaurants').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
     db.from('user_settings').select('*').eq('user_id', user.id).single(),
-    db
-      .from('activity_log')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('type', 'found')
-      .gte('created_at', new Date(new Date().getTime() - 24 * 60 * 60 * 1000).toISOString()),
   ]);
 
   const defaultSettings = {
@@ -48,7 +42,7 @@ export default async function DashboardPage() {
       initialRestaurants={restaurants ?? []}
       initialSlotMap={initialSlotMap}
       settings={defaultSettings}
-      slotsFoundToday={activity?.length ?? 0}
+      slotsFoundToday={(restaurants ?? []).reduce((sum, r) => sum + (Array.isArray(r.available_slots) ? r.available_slots.length : 0), 0)}
     />
   );
 }
