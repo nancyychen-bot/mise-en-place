@@ -160,10 +160,12 @@ export async function scrapeOpenTableMultiDate(restaurantId, dates, partySize) {
   // Intercept network responses to capture slot tokens from availability API
   page.on('response', async (response) => {
     const url = response.url();
-    if (!url.includes('availability') && !url.includes('gql')) return;
-    if (response.status() !== 200) return;
+    if (!url.includes('availability') && !url.includes('gql') && !url.includes('dapi')) return;
     try {
+      const contentType = response.headers()['content-type'] ?? '';
+      if (!contentType.includes('json')) return;
       const json = await response.json();
+      console.log(`[scrape] intercepted ${url.slice(0, 80)} — keys: ${Object.keys(json?.data ?? json).join(',').slice(0, 100)}`);
       // Handle GraphQL availability response
       const restaurants = json?.data?.restaurantsAvailability ?? json?.data?.availability ?? [];
       for (const r of Array.isArray(restaurants) ? restaurants : [restaurants]) {
