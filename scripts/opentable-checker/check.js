@@ -241,8 +241,8 @@ async function main() {
     );
     const newSlots = allSlots.filter(s => !prevKeys.has(`${s.date}:${s.time}`));
 
-    // Auto-book if enabled and new slots found
-    if (restaurant.auto_book && newSlots.length > 0) {
+    // Auto-book if enabled and any matching slots exist
+    if (restaurant.auto_book && allSlots.length > 0) {
       const { data: userSettings } = await db
         .from('user_settings')
         .select('opentable_session, token_expired, ntfy_topic')
@@ -250,7 +250,7 @@ async function main() {
         .single();
 
       if (userSettings?.opentable_session && !userSettings.token_expired?.opentable) {
-        const best = pickBestSlot(newSlots, restaurant.preferred_time);
+        const best = pickBestSlot(allSlots, restaurant.preferred_time);
         if (best) {
           try {
             const ctx = await launchBrowser();

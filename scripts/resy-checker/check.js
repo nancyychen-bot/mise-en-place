@@ -429,11 +429,11 @@ async function main() {
       );
       const newSlots = filtered.filter(s => !prevKeys.has(`${s.date}:${s.time}`));
 
-      // Auto-book if enabled and new slots found
-      if (restaurant.auto_book && newSlots.length > 0) {
+      // Auto-book if enabled and any matching slots exist
+      if (restaurant.auto_book && filtered.length > 0) {
         const authToken = authTokenMap.get(restaurant.user_id);
         if (authToken) {
-          const best = pickBestSlot(newSlots, restaurant.preferred_time);
+          const best = pickBestSlot(filtered, restaurant.preferred_time);
           if (best?.bookingToken) {
             try {
               const details = await getBookingDetails(
