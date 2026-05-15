@@ -166,8 +166,14 @@ export async function scrapeOpenTableMultiDate(restaurantId, dates, partySize) {
       if (!contentType.includes('json')) return;
       const json = await response.json();
       // Extract slot tokens from RestRefAvailability responses
-      // Slots use timeOffsetMinutes relative to the requested time (19:00 = 1140 min)
-      const BASE_MINUTES = 19 * 60; // default request time is 19:00
+      // Slots use timeOffsetMinutes relative to the requested time
+      // Determine base time from the request URL
+      let BASE_MINUTES = 19 * 60;
+      try {
+        const reqUrl = response.request().url();
+        const timeMatch = reqUrl.match(/time=(\d{2})%3A(\d{2})/);
+        if (timeMatch) BASE_MINUTES = parseInt(timeMatch[1]) * 60 + parseInt(timeMatch[2]);
+      } catch {}
       const avail = json?.data?.availability;
       if (Array.isArray(avail)) {
         for (const restaurant of avail) {
@@ -213,11 +219,13 @@ export async function scrapeOpenTableMultiDate(restaurantId, dates, partySize) {
 
     for (const date of dates) {
       try {
-        // Reload page with date in URL (OpenTable may or may not respect it)
-        const dateUrl = `https://www.opentable.com/booking/restref/availability?rid=${restaurantId}&restRef=${restaurantId}&partySize=${partySize}&date=${date}&time=19%3A00%3A00&lang=en-US`;
-        await page.goto(dateUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-        try { await page.waitForLoadState('networkidle', { timeout: 10000 }); } catch {}
-        await page.waitForTimeout(2000);
+        // Load page at 19:00 first, then at 21:00 to capture tokens across the full evening
+        for (const reqTime of ['19%3A00%3A00', '21%3A00%3A00']) {
+          const dateUrl = `https://www.opentable.com/booking/restref/availability?rid=${restaurantId}&restRef=${restaurantId}&partySize=${partySize}&date=${date}&time=${reqTime}&lang=en-US`;
+          await page.goto(dateUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+          try { await page.waitForLoadState('networkidle', { timeout: 10000 }); } catch {}
+          await page.waitForTimeout(2000);
+        }
 
         // Navigate the calendar to the correct date (URL param is often ignored)
         try {
@@ -258,10 +266,8 @@ export async function scrapeOpenTableMultiDate(restaurantId, dates, partySize) {
 
     // Attach slot tokens to results (match by time since API uses offsets not dates)
     let attached = 0;
-    console.log(`[scrape] token keys: ${[...slotTokens.keys()].join(', ')}`);
     for (const [date, slots] of results) {
       for (const slot of slots) {
-        console.log(`[scrape] looking up ${date}:${slot.time} or *:${slot.time}`);
         const tokens = slotTokens.get(`${date}:${slot.time}`) ?? slotTokens.get(`*:${slot.time}`);
         if (tokens) {
           slot.slotHash = tokens.slotHash;
