@@ -93,13 +93,19 @@ async function handleAuthExpired(userId, platform) {
   });
 }
 
+function parseOtToken(cookieValue) {
+  const params = new URLSearchParams(cookieValue);
+  return params.get('atk') ?? cookieValue;
+}
+
 async function bookOpenTableSlot(restaurant, slot, authToken) {
   const rid = restaurant.venue_id;
   const partySize = restaurant.party_sizes?.[0] ?? restaurant.party_size;
   const dateTime = `${slot.date}T${slot.time}`;
+  const token = parseOtToken(authToken);
   const headers = {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${authToken}`,
+    'Authorization': `Bearer ${token}`,
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36',
   };
 
