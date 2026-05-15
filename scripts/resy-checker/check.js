@@ -78,54 +78,65 @@ async function closeBrowser() {
   }
 }
 
-// ── Resy API via browser context ────────────────────────────────────
+// ── Resy API via browser cookies ────────────────────────────────────
+
+let impervaHeaders = {};
 
 async function warmUpImperva(page) {
   await page.goto('https://resy.com', { waitUntil: 'domcontentloaded', timeout: 30000 });
   try { await page.waitForLoadState('networkidle', { timeout: 15000 }); } catch {}
   await sleep(2000);
-  console.log('[resy-check] browser warmed up — Imperva cookies set');
+
+  const cookies = await context.cookies('https://resy.com');
+  const apiCookies = await context.cookies('https://api.resy.com');
+  const allCookies = [...cookies, ...apiCookies];
+  const cookieStr = allCookies.map(c => `${c.name}=${c.value}`).join('; ');
+
+  impervaHeaders = {
+    Authorization: `ResyAPI api_key="${resyApiKey}"`,
+    Accept: 'application/json, text/plain, */*',
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    Origin: 'https://resy.com',
+    Referer: 'https://resy.com/',
+    Cookie: cookieStr,
+  };
+
+  console.log(`[resy-check] browser warmed up — ${allCookies.length} cookies captured`);
 }
 
-async function findResyAvailability(page, venueId, day, partySize, city) {
+function isoToTime(iso) {
+  const parts = iso.split(' ');
+  const timePart = parts[1] ?? iso.split('T')[1] ?? '';
+  const [hStr, mStr] = timePart.split(':');
+  const h = parseInt(hStr, 10);
+  const m = mStr ?? '00';
+  const suffix = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return {
+    time: `${String(h).padStart(2, '0')}:${m}`,
+    displayTime: `${h12}:${m} ${suffix}`,
+  };
+}
+
+async function findResyAvailability(venueId, day, partySize, city) {
   const geo = CITY_GEO[city] ?? CITY_GEO.ny;
   const url = `https://api.resy.com/4/find?lat=${geo.lat}&long=${geo.long}&day=${day}&party_size=${partySize}&venue_id=${venueId}`;
 
-  const result = await page.evaluate(async ({ url, apiKey }) => {
-    try {
-      const res = await fetch(url, {
-        headers: {
-          Authorization: `ResyAPI api_key="${apiKey}"`,
-          Accept: 'application/json, text/plain, */*',
-        },
-      });
-      if (!res.ok) return { error: `http_${res.status}` };
-      const data = await res.json();
-      return { data };
-    } catch (err) {
-      return { error: err.message };
-    }
-  }, { url, apiKey: resyApiKey });
+  const res = await fetch(url, { headers: impervaHeaders });
+  if (!res.ok) throw new Error(`http_${res.status}`);
+  const data = await res.json();
 
-  if (result.error) throw new Error(result.error);
-
-  const venues = result.data?.results?.venues;
+  const venues = data?.results?.venues;
   if (!Array.isArray(venues) || venues.length === 0) return [];
 
   const rawSlots = venues[0]?.slots ?? [];
   return rawSlots.map((s) => {
     const startIso = s?.date?.start ?? '';
-    const parts = startIso.split(' ');
-    const timePart = parts[1] ?? startIso.split('T')[1] ?? '';
-    const [hStr, mStr] = timePart.split(':');
-    const h = parseInt(hStr, 10);
-    const m = mStr ?? '00';
-    const suffix = h >= 12 ? 'PM' : 'AM';
-    const h12 = h % 12 || 12;
+    const { time, displayTime } = isoToTime(startIso);
     return {
       date: day,
-      time: `${String(h).padStart(2, '0')}:${m}`,
-      displayTime: `${h12}:${m} ${suffix}`,
+      time,
+      displayTime,
       type: s?.config?.type ?? undefined,
       bookingToken: s?.config?.token ?? undefined,
     };
@@ -191,6 +202,7 @@ async function main() {
   await launchBrowser();
   const page = await context.newPage();
   await warmUpImperva(page);
+  await page.close();
 
   let checked = 0;
   for (const restaurant of restaurants) {
@@ -223,7 +235,7 @@ async function main() {
     for (const date of dates) {
       for (const size of sizes) {
         try {
-          const slots = await findResyAvailability(page, restaurant.venue_id, date, size, city);
+          const slots = await findResyAvailability(restaurant.venue_id, date, size, city);
           for (const slot of slots) {
             if (!inWindow(slot.time, earliest, latest)) continue;
             allSlots.push(slot);
@@ -254,7 +266,6 @@ async function main() {
     checked++;
   }
 
-  await page.close();
   await closeBrowser();
   console.log(`[resy-check] done — checked ${checked}`);
 }
