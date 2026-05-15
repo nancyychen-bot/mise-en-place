@@ -8,6 +8,7 @@ import {
   isCurrentTimeInQuietHours,
   getDateRange,
 } from './time-filter';
+import { pickBestSlot } from './booking';
 import type { CheckResult, Slot } from './types';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -20,7 +21,7 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
   // Load settings
   const { data: settings, error: settingsErr } = await db
     .from('user_settings')
-    .select('user_id, monitoring_enabled, timezone, active_hours_start, active_hours_end, resy_api_key, day_range, days_of_week, earliest_time, latest_time, quiet_hours_start, quiet_hours_end, ntfy_topic, ntfy_priority, platform_health')
+    .select('user_id, monitoring_enabled, timezone, active_hours_start, active_hours_end, resy_api_key, day_range, days_of_week, earliest_time, latest_time, quiet_hours_start, quiet_hours_end, ntfy_topic, ntfy_priority, platform_health, sevenrooms_auth_token, token_expired')
     .eq('user_id', userId)
     .single();
 
@@ -42,7 +43,7 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
   // Load active restaurants
   const { data: restaurants, error: restErr } = await db
     .from('restaurants')
-    .select('id, name, platform, venue_id, venue_slug, venue_city, party_size, party_sizes, available_slots, earliest_time, latest_time, day_range, date_start, date_end')
+    .select('id, name, platform, venue_id, venue_slug, venue_city, party_size, party_sizes, available_slots, earliest_time, latest_time, day_range, date_start, date_end, auto_book, preferred_time')
     .eq('user_id', userId)
     .eq('active', true);
 
@@ -148,6 +149,22 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
           type: 'check',
           message: checkMsg,
         });
+
+        // Auto-book for SevenRooms if enabled
+        if (newSlots.length > 0 && restaurant.auto_book && restaurant.platform === 'sevenrooms') {
+          const authToken: string | null = settings.sevenrooms_auth_token ?? null;
+          if (authToken && !settings.token_expired?.sevenrooms) {
+            const best = pickBestSlot(newSlots, restaurant.preferred_time ?? null);
+            if (best) {
+              // SevenRooms booking API — stub for now, log the attempt
+              console.log(`[checker] SevenRooms auto-book: would book ${restaurant.name} at ${best.displayTime} on ${best.date}`);
+              await db.from('activity_log').insert({
+                user_id: userId, restaurant_id: restaurant.id, type: 'system',
+                message: `SevenRooms auto-book not yet implemented for <strong>${restaurant.name}</strong>. Found ${best.displayTime} on ${best.date}.`,
+              });
+            }
+          }
+        }
 
         if (newSlots.length > 0) {
           const timeList = [...new Set(newSlots.map((s) => s.displayTime))].join(', ');

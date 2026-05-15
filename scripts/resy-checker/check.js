@@ -174,6 +174,93 @@ function inWindow(time, earliest, latest) {
   return true;
 }
 
+// ── Auto-booking helpers ───────────────────────────────────────────
+
+function pickBestSlot(slots, preferredTime) {
+  if (slots.length === 0) return null;
+  if (!preferredTime) return slots.sort((a, b) => a.time.localeCompare(b.time))[0];
+  function toMin(t) { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
+  const prefMin = toMin(preferredTime);
+  return slots.reduce((best, slot) => {
+    return Math.abs(toMin(slot.time) - prefMin) < Math.abs(toMin(best.time) - prefMin) ? slot : best;
+  });
+}
+
+function resyHeaders(apiKey, authToken) {
+  return {
+    Authorization: `ResyAPI api_key="${apiKey}"`,
+    'x-resy-auth-token': authToken,
+    'Content-Type': 'application/x-www-form-urlencoded',
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36',
+    'X-Origin': 'https://resy.com',
+    Referer: 'https://resy.com/',
+  };
+}
+
+async function getBookingDetails(apiKey, authToken, configId, day, partySize) {
+  const params = new URLSearchParams({ config_id: configId, day, party_size: String(partySize) });
+  const res = await fetch('https://api.resy.com/3/details', {
+    method: 'POST',
+    headers: resyHeaders(apiKey, authToken),
+    body: params.toString(),
+  });
+  if (res.status === 401 || res.status === 403) {
+    throw Object.assign(new Error('RESY_AUTH_EXPIRED'), { authExpired: true });
+  }
+  if (!res.ok) throw new Error(`details_http_${res.status}`);
+  const data = await res.json();
+  const bookToken = data?.book_token?.value;
+  if (!bookToken) throw new Error('no_book_token');
+  const paymentMethodId = data?.user?.payment_methods?.[0]?.id ?? null;
+  return { bookToken, paymentMethodId };
+}
+
+async function bookSlot(apiKey, authToken, bookToken, paymentMethodId) {
+  const params = new URLSearchParams({ book_token: bookToken });
+  if (paymentMethodId != null) {
+    params.set('struct_payment_method', JSON.stringify({ id: paymentMethodId }));
+  }
+  const res = await fetch('https://api.resy.com/3/book', {
+    method: 'POST',
+    headers: resyHeaders(apiKey, authToken),
+    body: params.toString(),
+  });
+  if (res.status === 401 || res.status === 403) {
+    return { success: false, error: 'auth_expired', authExpired: true };
+  }
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    return { success: false, error: `http_${res.status}: ${text.slice(0, 200)}` };
+  }
+  const data = await res.json();
+  return { success: true, confirmationId: data?.resy_token ?? 'confirmed' };
+}
+
+async function handleAuthExpired(userId, platform) {
+  const { data: current } = await db
+    .from('user_settings')
+    .select('token_expired, ntfy_topic')
+    .eq('user_id', userId)
+    .single();
+  const expired = { ...(current?.token_expired ?? {}), [platform]: true };
+  await db.from('user_settings').update({ token_expired: expired }).eq('user_id', userId);
+  await db.from('restaurants')
+    .update({ auto_book: false })
+    .eq('user_id', userId)
+    .eq('platform', platform);
+  if (current?.ntfy_topic) {
+    await fetch(`https://ntfy.sh/${encodeURIComponent(current.ntfy_topic)}`, {
+      method: 'POST',
+      headers: { Title: `${platform} token expired`, Priority: 'high', Tags: 'warning' },
+      body: `Auto-booking paused. Update your ${platform} token in account settings.`,
+    });
+  }
+  await db.from('activity_log').insert({
+    user_id: userId, type: 'system',
+    message: `<strong>${platform}</strong> token expired — auto-booking disabled.`,
+  });
+}
+
 // ── Main ────────────────────────────────────────────────────────────
 
 async function main() {
@@ -181,7 +268,7 @@ async function main() {
 
   let { data: restaurants, error: restErr } = await db
     .from('restaurants')
-    .select('id, user_id, name, venue_id, venue_city, party_size, party_sizes, earliest_time, latest_time, day_range, date_start, date_end')
+    .select('id, user_id, name, venue_id, venue_city, party_size, party_sizes, earliest_time, latest_time, day_range, date_start, date_end, auto_book, preferred_time, available_slots')
     .eq('platform', 'resy')
     .eq('active', true);
 
@@ -206,6 +293,26 @@ async function main() {
   }
   const settingsMap = new Map();
   for (const s of allSettings ?? []) settingsMap.set(s.user_id, s);
+
+  // Load auth tokens for users with auto_book restaurants
+  const autoBookUserIds = [...new Set(
+    restaurants.filter(r => r.auto_book).map(r => r.user_id)
+  )];
+  const authTokenMap = new Map();
+  if (autoBookUserIds.length > 0) {
+    const { data: tokens } = await db
+      .from('user_settings')
+      .select('user_id, resy_auth_token, token_expired')
+      .in('user_id', autoBookUserIds);
+    for (const t of tokens ?? []) {
+      if (t.resy_auth_token && !t.token_expired?.resy) {
+        authTokenMap.set(t.user_id, t.resy_auth_token);
+      }
+    }
+    if (authTokenMap.size > 0) {
+      console.log(`[resy-check] ${authTokenMap.size} user(s) with auto-book auth tokens`);
+    }
+  }
 
   // Group restaurants by venue_id — fetch once per venue, write to all rows
   const venueMap = new Map(); // venue_id → { city, restaurants: [...], maxDayRange, allSizes, allDates }
@@ -316,6 +423,72 @@ async function main() {
       const latest = restaurant.latest_time || settings.latest_time;
       const filtered = rawSlots.filter(s => inWindow(s.time, earliest, latest));
 
+      // Detect new slots (not in previous available_slots)
+      const prevKeys = new Set(
+        (restaurant.available_slots ?? []).map(s => `${s.date}:${s.time}`)
+      );
+      const newSlots = filtered.filter(s => !prevKeys.has(`${s.date}:${s.time}`));
+
+      // Auto-book if enabled and new slots found
+      if (restaurant.auto_book && newSlots.length > 0) {
+        const authToken = authTokenMap.get(restaurant.user_id);
+        if (authToken) {
+          const best = pickBestSlot(newSlots, restaurant.preferred_time);
+          if (best?.bookingToken) {
+            try {
+              const details = await getBookingDetails(
+                resyApiKey, authToken, best.bookingToken, best.date,
+                restaurant.party_sizes?.[0] ?? restaurant.party_size
+              );
+              const result = await bookSlot(resyApiKey, authToken, details.bookToken, details.paymentMethodId);
+              if (result.success) {
+                console.log(`[resy-check] AUTO-BOOKED ${restaurant.name} at ${best.displayTime} on ${best.date}`);
+                await db.from('restaurants').update({ auto_book: false }).eq('id', restaurant.id);
+                await db.from('activity_log').insert({
+                  user_id: restaurant.user_id, restaurant_id: restaurant.id, type: 'system',
+                  message: `Auto-booked <strong>${restaurant.name}</strong> at ${best.displayTime} on ${best.date}`,
+                });
+                const ntfyTopic = settingsMap.get(restaurant.user_id)?.ntfy_topic;
+                if (ntfyTopic) {
+                  await fetch(`https://ntfy.sh/${encodeURIComponent(ntfyTopic)}`, {
+                    method: 'POST',
+                    headers: { Title: `Booked! ${restaurant.name}`, Priority: 'high', Tags: 'white_check_mark' },
+                    body: `${best.displayTime} on ${best.date} for ${restaurant.party_sizes?.[0] ?? restaurant.party_size} guests`,
+                  });
+                }
+              } else if (result.authExpired) {
+                console.error(`[resy-check] auth expired for user ${restaurant.user_id}`);
+                await handleAuthExpired(restaurant.user_id, 'resy');
+              } else {
+                console.error(`[resy-check] booking failed for ${restaurant.name}: ${result.error}`);
+                await db.from('activity_log').insert({
+                  user_id: restaurant.user_id, restaurant_id: restaurant.id, type: 'system',
+                  message: `Auto-book failed for <strong>${restaurant.name}</strong>: ${result.error}. Will retry next check.`,
+                });
+                const ntfyTopic = settingsMap.get(restaurant.user_id)?.ntfy_topic;
+                if (ntfyTopic) {
+                  await fetch(`https://ntfy.sh/${encodeURIComponent(ntfyTopic)}`, {
+                    method: 'POST',
+                    headers: { Title: `Auto-book failed: ${restaurant.name}`, Priority: 'default', Tags: 'warning' },
+                    body: `${result.error}. Will retry next check.`,
+                  });
+                }
+              }
+            } catch (err) {
+              if (err.authExpired) {
+                await handleAuthExpired(restaurant.user_id, 'resy');
+              } else {
+                console.error(`[resy-check] booking error for ${restaurant.name}: ${err.message}`);
+                await db.from('activity_log').insert({
+                  user_id: restaurant.user_id, restaurant_id: restaurant.id, type: 'system',
+                  message: `Auto-book error for <strong>${restaurant.name}</strong>: ${err.message}. Will retry next check.`,
+                });
+              }
+            }
+          }
+        }
+      }
+
       // Don't overwrite with empty if we got throttled — preserve previous data
       if (throttled && filtered.length === 0) {
         await db.from('restaurants').update({ last_checked: now }).eq('id', restaurant.id);
@@ -327,8 +500,8 @@ async function main() {
 
       // Write to activity_log so platform health reflects GH Actions status
       const checkMsg = hadError
-        ? `Checked <strong>${restaurant.name}</strong> — ${filtered.length} slot(s) available, 0 new (prev: 0) [err: ${throttled ? 'throttled' : 'partial'}]`
-        : `Checked <strong>${restaurant.name}</strong> — ${filtered.length} slot(s) available, 0 new (prev: 0)`;
+        ? `Checked <strong>${restaurant.name}</strong> — ${filtered.length} slot(s) available, ${newSlots.length} new (prev: ${(restaurant.available_slots ?? []).length}) [err: ${throttled ? 'throttled' : 'partial'}]`
+        : `Checked <strong>${restaurant.name}</strong> — ${filtered.length} slot(s) available, ${newSlots.length} new (prev: ${(restaurant.available_slots ?? []).length})`;
       const { error: logErr } = await db.from('activity_log').insert({
         user_id: restaurant.user_id,
         restaurant_id: restaurant.id,
@@ -336,6 +509,20 @@ async function main() {
         message: checkMsg,
       });
       if (logErr) console.error(`[resy-check] activity_log insert failed: ${logErr.message}`);
+
+      // Send ntfy for new slots (even without auto-book)
+      if (newSlots.length > 0 && !restaurant.auto_book) {
+        const ntfyTopic = settingsMap.get(restaurant.user_id)?.ntfy_topic;
+        if (ntfyTopic) {
+          const timeList = [...new Set(newSlots.map(s => s.displayTime))].join(', ');
+          const dateList = [...new Set(newSlots.map(s => s.date))].join(', ');
+          await fetch(`https://ntfy.sh/${encodeURIComponent(ntfyTopic)}`, {
+            method: 'POST',
+            headers: { Title: `${restaurant.name}`, Priority: settingsMap.get(restaurant.user_id)?.ntfy_priority ?? 'default', Tags: 'fork_and_knife' },
+            body: `${timeList} on ${dateList}`,
+          });
+        }
+      }
     }
     console.log(`[resy-check] ${venue.name} — ${rawSlots.length} slot(s)${hadError ? ' (with errors)' : ''} → ${venue.restaurants.length} row(s)`);
     checked++;

@@ -1,6 +1,6 @@
 'use client';
 
-import type { Restaurant, Slot } from '@/lib/types';
+import type { Restaurant, Slot, Platform } from '@/lib/types';
 import RestaurantCard from './restaurant-card';
 
 interface RestaurantGridProps {
@@ -10,6 +10,7 @@ interface RestaurantGridProps {
   onDelete: (id: string) => Promise<void>;
   onVenueIdFixed?: (id: string, newVenueId: string) => void;
   onUpdate?: (id: string, updates: Partial<Restaurant>) => void;
+  onValidateAutoBook?: (platform: Platform) => boolean;
 }
 
 export default function RestaurantGrid({
@@ -19,6 +20,7 @@ export default function RestaurantGrid({
   onDelete,
   onVenueIdFixed,
   onUpdate,
+  onValidateAutoBook,
 }: RestaurantGridProps) {
   return (
     <div
@@ -38,6 +40,7 @@ export default function RestaurantGrid({
           onDelete={onDelete}
           onVenueIdFixed={onVenueIdFixed}
           onUpdate={onUpdate}
+          onValidateAutoBook={onValidateAutoBook}
         />
       ))}
     </div>

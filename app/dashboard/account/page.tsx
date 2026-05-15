@@ -6,6 +6,7 @@ import { BtnPrimary, BtnSecondary } from '@/components/buttons';
 import FieldRow from '@/components/field-row';
 import Toggle from '@/components/toggle';
 import SignOutButton from '@/components/sign-out-button';
+import Link from 'next/link';
 
 interface AccountData {
   email: string;
@@ -15,6 +16,10 @@ interface AccountData {
   monitoringEnabled: boolean;
   timezone: string;
   resyApiKey: string | null;
+  resyAuthToken: string | null;
+  opentableSession: string | null;
+  sevenroomsAuthToken: string | null;
+  tokenExpired: Record<string, boolean>;
 }
 
 const sectionStyle: React.CSSProperties = {
@@ -39,6 +44,10 @@ export default function AccountPage() {
     monitoringEnabled: true,
     timezone: 'America/New_York',
     resyApiKey: null,
+    resyAuthToken: null,
+    opentableSession: null,
+    sevenroomsAuthToken: null,
+    tokenExpired: {},
   });
 
   const [saving, setSaving] = useState(false);
@@ -68,6 +77,9 @@ export default function AccountPage() {
       monitoringEnabled: data.monitoringEnabled,
       timezone: data.timezone,
       resyApiKey: data.resyApiKey ?? undefined,
+      resyAuthToken: data.resyAuthToken && data.resyAuthToken !== '••••••' ? data.resyAuthToken : undefined,
+      opentableSession: data.opentableSession && data.opentableSession !== '••••••' ? data.opentableSession : undefined,
+      sevenroomsAuthToken: data.sevenroomsAuthToken && data.sevenroomsAuthToken !== '••••••' ? data.sevenroomsAuthToken : undefined,
     };
 
     try {
@@ -238,6 +250,41 @@ export default function AccountPage() {
               label="monitoring"
             />
           </FieldRow>
+        </div>
+
+        {/* Platform Connections */}
+        <div style={sectionStyle}>
+          <h2 style={sectionHeaderStyle}>Platform Connections</h2>
+          <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+            Connect your accounts to enable auto-booking. See the{' '}
+            <Link href="/dashboard/setup" style={{ textDecoration: 'underline' }}>Setup Guide</Link>{' '}
+            for instructions.
+          </p>
+          {(['resy', 'opentable', 'sevenrooms'] as const).map((platform) => {
+            const fieldMap = { resy: 'resyAuthToken', opentable: 'opentableSession', sevenrooms: 'sevenroomsAuthToken' } as const;
+            const labelMap = { resy: 'Resy', opentable: 'OpenTable', sevenrooms: 'SevenRooms' } as const;
+            const field = fieldMap[platform];
+            const isSet = !!data[field];
+            const isExpired = data.tokenExpired?.[platform] === true;
+            const dotColor = isExpired ? 'var(--tag-red)' : isSet ? 'var(--tag-green)' : 'var(--text-muted)';
+            const statusText = isExpired ? 'Expired' : isSet ? 'Connected' : 'Not connected';
+
+            return (
+              <FieldRow key={platform} label={`${labelMap[platform]} Token`} description={statusText}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
+                  <input
+                    type="password"
+                    style={inputStyle}
+                    value={data[field] ?? ''}
+                    onChange={(e) => setData((d) => ({ ...d, [field]: e.target.value || null }))}
+                    placeholder="Paste token here"
+                    autoComplete="off"
+                  />
+                </div>
+              </FieldRow>
+            );
+          })}
         </div>
 
         {error && (

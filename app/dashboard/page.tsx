@@ -27,6 +27,10 @@ export default async function DashboardPage() {
     ntfyTopic: settings?.ntfy_topic ?? null,
     ntfyPriority: settings?.ntfy_priority ?? 'default',
     resyApiKey: null,
+    resyAuthToken: settings?.resy_auth_token ? '••••••' : null,
+    opentableSession: settings?.opentable_session ? '••••••' : null,
+    sevenroomsAuthToken: settings?.sevenrooms_auth_token ? '••••••' : null,
+    tokenExpired: (settings?.token_expired as Record<string, boolean>) ?? {},
   };
 
   // Build initial slot map from persisted available_slots

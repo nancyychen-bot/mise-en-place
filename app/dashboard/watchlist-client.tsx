@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { Restaurant, UserSettings, Slot } from '@/lib/types';
+import type { Restaurant, UserSettings, Slot, Platform } from '@/lib/types';
 import PreferencesBar from '@/components/preferences-bar';
 import PlatformHealth from '@/components/platform-health';
 import AddRestaurantForm from '@/components/add-restaurant-form';
@@ -37,6 +37,8 @@ function normalizeRestaurant(r: any): Restaurant {
     dayRange: r.day_range ?? null,
     dateStart: r.date_start ?? null,
     dateEnd: r.date_end ?? null,
+    autoBook: r.auto_book ?? false,
+    preferredTime: r.preferred_time ?? null,
   };
 }
 
@@ -127,6 +129,29 @@ export default function WatchlistClient({
     }
   }
 
+  function handleValidateAutoBook(platform: Platform): boolean {
+    const tokenMap: Record<string, string | null | undefined> = {
+      resy: settings.resyAuthToken,
+      opentable: settings.opentableSession,
+      sevenrooms: settings.sevenroomsAuthToken,
+    };
+    const labelMap: Record<string, string> = {
+      resy: 'Resy',
+      opentable: 'OpenTable',
+      sevenrooms: 'SevenRooms',
+    };
+    if (settings.tokenExpired?.[platform]) {
+      alert(`Your ${labelMap[platform]} token has expired. Update it in Account → Platform Connections.`);
+      return false;
+    }
+    if (!tokenMap[platform]) {
+      alert(`Set up your ${labelMap[platform]} token first.\nGo to Account → Platform Connections, or see the Setup Guide.`);
+      return false;
+    }
+    return true;
+  }
+
+  const expiredPlatforms = Object.entries(settings.tokenExpired ?? {}).filter(([, v]) => v);
   const isEmpty = restaurants.length === 0;
 
   return (
@@ -137,6 +162,21 @@ export default function WatchlistClient({
         padding: '32px 40px 80px',
       }}
     >
+      {expiredPlatforms.map(([platform]) => (
+        <div
+          key={platform}
+          style={{
+            background: 'var(--tag-red)', color: 'var(--bg)', padding: '10px 16px',
+            fontSize: '13px', fontWeight: 500, marginBottom: '12px',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          }}
+        >
+          <span>Your {platform} token has expired. Auto-booking is paused.</span>
+          <a href="/dashboard/account" style={{ color: 'var(--bg)', fontWeight: 700, textDecoration: 'underline' }}>
+            Update token →
+          </a>
+        </div>
+      ))}
       <PreferencesBar
         settings={settings}
         watchingCount={restaurants.filter((r) => r.active).length}
@@ -189,6 +229,7 @@ export default function WatchlistClient({
           onDelete={handleDelete}
           onVenueIdFixed={handleVenueIdFixed}
           onUpdate={handleUpdate}
+          onValidateAutoBook={handleValidateAutoBook}
         />
       )}
     </div>

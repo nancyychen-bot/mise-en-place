@@ -56,6 +56,72 @@ function getDateRange(days, timezone = 'America/New_York') {
   return result;
 }
 
+// ── Auto-booking helpers ───────────────────────────────────────────
+
+function pickBestSlot(slots, preferredTime) {
+  if (slots.length === 0) return null;
+  if (!preferredTime) return slots.sort((a, b) => a.time.localeCompare(b.time))[0];
+  function toMin(t) { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
+  const prefMin = toMin(preferredTime);
+  return slots.reduce((best, slot) => {
+    return Math.abs(toMin(slot.time) - prefMin) < Math.abs(toMin(best.time) - prefMin) ? slot : best;
+  });
+}
+
+async function handleAuthExpired(userId, platform) {
+  const { data: current } = await db
+    .from('user_settings')
+    .select('token_expired, ntfy_topic')
+    .eq('user_id', userId)
+    .single();
+  const expired = { ...(current?.token_expired ?? {}), [platform]: true };
+  await db.from('user_settings').update({ token_expired: expired }).eq('user_id', userId);
+  await db.from('restaurants')
+    .update({ auto_book: false })
+    .eq('user_id', userId)
+    .eq('platform', platform);
+  if (current?.ntfy_topic) {
+    await fetch(`https://ntfy.sh/${encodeURIComponent(current.ntfy_topic)}`, {
+      method: 'POST',
+      headers: { Title: `${platform} token expired`, Priority: 'high', Tags: 'warning' },
+      body: `Auto-booking paused. Update your ${platform} token in account settings.`,
+    });
+  }
+  await db.from('activity_log').insert({
+    user_id: userId, type: 'system',
+    message: `<strong>${platform}</strong> token expired — auto-booking disabled.`,
+  });
+}
+
+async function bookOpenTableSlot(page, restaurant, slot, sessionToken) {
+  const url = `https://www.opentable.com/booking/restref/availability?rid=${restaurant.venue_id}&restRef=${restaurant.venue_id}&partySize=${restaurant.party_size}&date=${slot.date}&time=${slot.time}%3A00&lang=en-US`;
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await page.waitForTimeout(2000);
+
+  await page.context().addCookies([{
+    name: 'csrf_token',
+    value: sessionToken,
+    domain: '.opentable.com',
+    path: '/',
+  }]);
+
+  const timeBtn = page.locator(`button:has-text("${slot.displayTime}")`).first();
+  if (await timeBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+    await timeBtn.click();
+    await page.waitForTimeout(2000);
+
+    const completeBtn = page.locator('button:has-text("Complete"), button:has-text("Reserve")').first();
+    if (await completeBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await completeBtn.click();
+      await page.waitForTimeout(3000);
+
+      const bodyText = await page.evaluate(() => document.body.innerText.slice(0, 500));
+      return bodyText.toLowerCase().includes('confirmed') || bodyText.toLowerCase().includes('reservation');
+    }
+  }
+  return false;
+}
+
 // ── Main ────────────────────────────────────────────────────────────
 
 async function main() {
@@ -64,7 +130,7 @@ async function main() {
   // 1. Load ALL active OpenTable restaurants across all users
   const { data: restaurants, error: restErr } = await db
     .from('restaurants')
-    .select('id, user_id, name, venue_id, party_size, party_sizes, earliest_time, latest_time, day_range, date_start, date_end')
+    .select('id, user_id, name, venue_id, party_size, party_sizes, earliest_time, latest_time, day_range, date_start, date_end, auto_book, preferred_time, available_slots')
     .eq('platform', 'opentable')
     .eq('active', true);
 
@@ -169,6 +235,60 @@ async function main() {
       }
     }
 
+    // Detect new slots
+    const prevKeys = new Set(
+      (restaurant.available_slots ?? []).map(s => `${s.date}:${s.time}`)
+    );
+    const newSlots = allSlots.filter(s => !prevKeys.has(`${s.date}:${s.time}`));
+
+    // Auto-book if enabled and new slots found
+    if (restaurant.auto_book && newSlots.length > 0) {
+      const { data: userSettings } = await db
+        .from('user_settings')
+        .select('opentable_session, token_expired, ntfy_topic')
+        .eq('user_id', restaurant.user_id)
+        .single();
+
+      if (userSettings?.opentable_session && !userSettings.token_expired?.opentable) {
+        const best = pickBestSlot(newSlots, restaurant.preferred_time);
+        if (best) {
+          try {
+            const ctx = await launchBrowser();
+            const bookingPage = await ctx.newPage();
+            const booked = await bookOpenTableSlot(bookingPage, restaurant, best, userSettings.opentable_session);
+            await bookingPage.close().catch(() => {});
+            if (booked) {
+              console.log(`[check] AUTO-BOOKED ${restaurant.name} at ${best.displayTime} on ${best.date}`);
+              await db.from('restaurants').update({ auto_book: false }).eq('id', restaurant.id);
+              await db.from('activity_log').insert({
+                user_id: restaurant.user_id, restaurant_id: restaurant.id, type: 'system',
+                message: `Auto-booked <strong>${restaurant.name}</strong> at ${best.displayTime} on ${best.date}`,
+              });
+              if (userSettings.ntfy_topic) {
+                await fetch(`https://ntfy.sh/${encodeURIComponent(userSettings.ntfy_topic)}`, {
+                  method: 'POST',
+                  headers: { Title: `Booked! ${restaurant.name}`, Priority: 'high', Tags: 'white_check_mark' },
+                  body: `${best.displayTime} on ${best.date}`,
+                });
+              }
+            } else {
+              console.log(`[check] auto-book attempt for ${restaurant.name} did not confirm`);
+              await db.from('activity_log').insert({
+                user_id: restaurant.user_id, restaurant_id: restaurant.id, type: 'system',
+                message: `Auto-book attempted for <strong>${restaurant.name}</strong> but could not confirm. Will retry next check.`,
+              });
+            }
+          } catch (err) {
+            console.error(`[check] OpenTable booking failed: ${err.message}`);
+            await db.from('activity_log').insert({
+              user_id: restaurant.user_id, restaurant_id: restaurant.id, type: 'system',
+              message: `Auto-book error for <strong>${restaurant.name}</strong>: ${err.message}. Will retry next check.`,
+            });
+          }
+        }
+      }
+    }
+
     const now = new Date().toISOString();
     const { error: updateErr } = await db
       .from('restaurants')
@@ -182,7 +302,7 @@ async function main() {
     if (updateErr) {
       console.error(`[check] failed to update ${restaurant.name}:`, updateErr.message);
     } else {
-      console.log(`[check] ${restaurant.name} — ${allSlots.length} slot(s) in window`);
+      console.log(`[check] ${restaurant.name} — ${allSlots.length} slot(s) in window, ${newSlots.length} new`);
     }
     checked++;
   }

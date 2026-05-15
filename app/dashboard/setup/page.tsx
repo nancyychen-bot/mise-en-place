@@ -180,8 +180,47 @@ export default function SetupPage() {
         </ol>
       </Step>
 
+      {/* Step 2 — Auto-booking (optional) */}
+      <Step number={2} eyebrow="Optional" title="Connect your accounts for auto-booking">
+        <p style={descStyle}>
+          If you want Mise en Place to automatically book reservations when a slot opens,
+          you&rsquo;ll need to connect your restaurant platform accounts. This gives the app
+          permission to book on your behalf.
+        </p>
+
+        <Callout variant="warn">
+          <strong>Auto-booking may charge your card.</strong> Some restaurants require deposits.
+          By connecting your account, you authorize automatic bookings including any associated charges.
+        </Callout>
+
+        <strong style={{ fontSize: '13px' }}>For Resy:</strong>
+        <ol style={{ margin: '12px 0 16px 22px', fontSize: '14px', lineHeight: 1.7, color: 'var(--text)' }}>
+          <li>Log into <strong>resy.com</strong> in your browser</li>
+          <li>Open DevTools (<code className="code">Cmd + Option + I</code> on Mac, <code className="code">F12</code> on Windows)</li>
+          <li>Go to the <strong>Network</strong> tab, then search for any restaurant on Resy</li>
+          <li>Click any <code className="code">api.resy.com</code> request, then click <strong>Headers</strong></li>
+          <li>Find <code className="code">x-resy-auth-token</code> and copy the value</li>
+          <li>Paste it into the Resy Token field on your <Link href="/dashboard/account" style={{ textDecoration: 'underline' }}>Account</Link> page</li>
+        </ol>
+
+        <strong style={{ fontSize: '13px' }}>For OpenTable:</strong>
+        <ol style={{ margin: '12px 0 16px 22px', fontSize: '14px', lineHeight: 1.7, color: 'var(--text)' }}>
+          <li>Log into <strong>opentable.com</strong> in your browser</li>
+          <li>Open DevTools → <strong>Application</strong> tab → <strong>Cookies</strong></li>
+          <li>Find and copy the <code className="code">csrf_token</code> cookie value</li>
+          <li>Paste it into the OpenTable Token field on your <Link href="/dashboard/account" style={{ textDecoration: 'underline' }}>Account</Link> page</li>
+        </ol>
+
+        <strong style={{ fontSize: '13px' }}>For SevenRooms:</strong>
+        <ol style={{ margin: '12px 0 16px 22px', fontSize: '14px', lineHeight: 1.7, color: 'var(--text)' }}>
+          <li>Log into <strong>sevenrooms.com</strong>, open DevTools → <strong>Network</strong></li>
+          <li>Make a reservation search, then find the <code className="code">Authorization</code> header</li>
+          <li>Copy the token value and paste it on your <Link href="/dashboard/account" style={{ textDecoration: 'underline' }}>Account</Link> page</li>
+        </ol>
+      </Step>
+
       {/* Step 3 */}
-      <Step number={2} eyebrow="About 3 minutes" title="Add your first restaurant">
+      <Step number={3} eyebrow="About 3 minutes" title="Add your first restaurant">
         <p style={descStyle}>
           Time for the fun part. Let&rsquo;s add a restaurant to your watchlist so Mise en Place knows
           what to watch. We support both <strong>Resy</strong> and <strong>OpenTable</strong>.

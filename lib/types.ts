@@ -24,6 +24,10 @@ export interface UserSettings {
   activeHoursEnd: string;
   quietHoursStart: string;
   quietHoursEnd: string;
+  resyAuthToken: string | null;
+  opentableSession: string | null;
+  sevenroomsAuthToken: string | null;
+  tokenExpired: Record<string, boolean>;
 }
 
 export interface Restaurant {
@@ -44,6 +48,8 @@ export interface Restaurant {
   dayRange: number | null;
   dateStart: string | null;  // "YYYY-MM-DD"
   dateEnd: string | null;    // "YYYY-MM-DD"
+  autoBook: boolean;
+  preferredTime: string | null; // "19:30" (24h)
 }
 
 export interface Slot {

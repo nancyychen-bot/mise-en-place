@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { Restaurant, Slot } from '@/lib/types';
+import type { Restaurant, Slot, Platform } from '@/lib/types';
 import { fmt12h } from '@/lib/time-filter';
 import PlatformTag from './platform-tag';
 
@@ -12,6 +12,7 @@ interface RestaurantCardProps {
   onDelete: (id: string) => Promise<void>;
   onVenueIdFixed?: (id: string, newVenueId: string) => void;
   onUpdate?: (id: string, updates: Partial<Restaurant>) => void;
+  onValidateAutoBook?: (platform: Platform) => boolean;
 }
 
 function getBookingUrl(restaurant: Restaurant, slot?: Slot): string {
@@ -79,6 +80,7 @@ export default function RestaurantCard({
   onDelete,
   onVenueIdFixed,
   onUpdate,
+  onValidateAutoBook,
 }: RestaurantCardProps) {
   const [toggling, setToggling] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -94,6 +96,8 @@ export default function RestaurantCard({
   const [editLatest, setEditLatest] = useState(restaurant.latestTime ?? '');
   const [editDateStart, setEditDateStart] = useState(restaurant.dateStart ?? '');
   const [editDateEnd, setEditDateEnd] = useState(restaurant.dateEnd ?? '');
+  const [editAutoBook, setEditAutoBook] = useState(restaurant.autoBook ?? false);
+  const [editPreferredTime, setEditPreferredTime] = useState(restaurant.preferredTime ?? '');
   const [saving, setSaving] = useState(false);
 
   const hasSlots = slots.length > 0;
@@ -111,6 +115,8 @@ export default function RestaurantCard({
     setEditLatest(restaurant.latestTime ?? '');
     setEditDateStart(restaurant.dateStart ?? '');
     setEditDateEnd(restaurant.dateEnd ?? '');
+    setEditAutoBook(restaurant.autoBook ?? false);
+    setEditPreferredTime(restaurant.preferredTime ?? '');
   }
 
   function toggleEditSize(n: number) {
@@ -132,6 +138,8 @@ export default function RestaurantCard({
           latestTime: editLatest || null,
           dateStart: editDateStart || null,
           dateEnd: editDateEnd || null,
+          autoBook: editAutoBook,
+          preferredTime: editPreferredTime || null,
         }),
       });
       if (res.ok) {
@@ -143,6 +151,8 @@ export default function RestaurantCard({
           latestTime: editLatest || null,
           dateStart: editDateStart || null,
           dateEnd: editDateEnd || null,
+          autoBook: editAutoBook,
+          preferredTime: editPreferredTime || null,
         });
         setEditing(false);
       }
@@ -367,6 +377,54 @@ export default function RestaurantCard({
               </button>
             )}
           </div>
+          {restaurant.platform !== 'tock' && (
+            <>
+              <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' }}>
+                Auto-Book
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!editAutoBook) {
+                      if (!onValidateAutoBook?.(restaurant.platform)) return;
+                    }
+                    setEditAutoBook(!editAutoBook);
+                  }}
+                  style={{
+                    width: '44px', height: '26px', borderRadius: '13px',
+                    border: editAutoBook ? '1px solid var(--tag-green)' : '1px solid var(--border)',
+                    background: editAutoBook ? 'var(--tag-green)' : 'var(--bg)',
+                    cursor: 'pointer', position: 'relative', transition: 'all 0.2s', padding: 0,
+                  }}
+                >
+                  <span
+                    style={{
+                      position: 'absolute', width: '18px', height: '18px', borderRadius: '50%',
+                      background: editAutoBook ? 'var(--bg)' : 'var(--text)',
+                      top: '3px', left: editAutoBook ? '22px' : '3px', transition: 'all 0.2s',
+                    }}
+                  />
+                </button>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                  {editAutoBook ? 'Will auto-book best slot' : 'Notify only'}
+                </span>
+              </div>
+              {editAutoBook && (
+                <>
+                  <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' }}>
+                    Preferred Time <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: '0' }}>(books closest match)</span>
+                  </p>
+                  <input
+                    type="time"
+                    value={editPreferredTime}
+                    onChange={(e) => setEditPreferredTime(e.target.value)}
+                    style={{ ...timeInputStyle, marginBottom: '10px' }}
+                  />
+                </>
+              )}
+            </>
+          )}
           <div style={{ display: 'flex', gap: '6px' }}>
             <button
               onClick={handleSave}
@@ -416,6 +474,11 @@ export default function RestaurantCard({
               {restaurant.earliestTime && restaurant.latestTime && `${fmt12h(restaurant.earliestTime)}–${fmt12h(restaurant.latestTime)}`}
               {restaurant.earliestTime && restaurant.latestTime && restaurant.dateStart && restaurant.dateEnd && ' · '}
               {restaurant.dateStart && restaurant.dateEnd && `${restaurant.dateStart.slice(5).replace('-', '/')}–${restaurant.dateEnd.slice(5).replace('-', '/')}`}
+            </p>
+          )}
+          {restaurant.autoBook && (
+            <p style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.04em', color: 'var(--tag-green)', marginBottom: '12px', marginTop: '-4px' }}>
+              Auto-book · {restaurant.preferredTime ? fmt12h(restaurant.preferredTime) : 'earliest'}
             </p>
           )}
         </>
