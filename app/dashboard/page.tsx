@@ -31,6 +31,7 @@ export default async function DashboardPage() {
     opentableSession: settings?.opentable_session ? '••••••' : null,
     sevenroomsAuthToken: settings?.sevenrooms_auth_token ? '••••••' : null,
     tokenExpired: (settings?.token_expired as Record<string, boolean>) ?? {},
+    phoneNumber: settings?.phone_number ?? null,
   };
 
   // Build initial slot map from persisted available_slots

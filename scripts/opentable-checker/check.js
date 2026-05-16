@@ -347,7 +347,7 @@ async function main() {
     if (restaurant.auto_book && allSlots.length > 0) {
       const { data: userSettings } = await db
         .from('user_settings')
-        .select('opentable_session, token_expired, ntfy_topic')
+        .select('opentable_session, token_expired, ntfy_topic, phone_number')
         .eq('user_id', restaurant.user_id)
         .single();
 
@@ -366,7 +366,7 @@ async function main() {
               firstName: nameParts[0] || 'Guest',
               lastName: nameParts.slice(1).join(' ') || '',
               email: userProfile?.email || '',
-              phone: '',
+              phone: userSettings.phone_number || '',
             };
 
             const ctx = await launchBrowser();

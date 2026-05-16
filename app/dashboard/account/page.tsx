@@ -20,6 +20,7 @@ interface AccountData {
   opentableSession: string | null;
   sevenroomsAuthToken: string | null;
   tokenExpired: Record<string, boolean>;
+  phoneNumber: string | null;
 }
 
 const sectionStyle: React.CSSProperties = {
@@ -48,6 +49,7 @@ export default function AccountPage() {
     opentableSession: null,
     sevenroomsAuthToken: null,
     tokenExpired: {},
+    phoneNumber: null,
   });
 
   const [saving, setSaving] = useState(false);
@@ -80,6 +82,7 @@ export default function AccountPage() {
       resyAuthToken: data.resyAuthToken && data.resyAuthToken !== '••••••' ? data.resyAuthToken : undefined,
       opentableSession: data.opentableSession && data.opentableSession !== '••••••' ? data.opentableSession : undefined,
       sevenroomsAuthToken: data.sevenroomsAuthToken && data.sevenroomsAuthToken !== '••••••' ? data.sevenroomsAuthToken : undefined,
+      phoneNumber: data.phoneNumber ?? undefined,
     };
 
     try {
@@ -260,6 +263,16 @@ export default function AccountPage() {
             <Link href="/dashboard/setup" style={{ textDecoration: 'underline' }}>Setup Guide</Link>{' '}
             for instructions.
           </p>
+          <FieldRow label="Phone Number" description="Required for OpenTable auto-booking">
+            <input
+              type="tel"
+              style={inputStyle}
+              value={data.phoneNumber ?? ''}
+              onChange={(e) => setData((d) => ({ ...d, phoneNumber: e.target.value || null }))}
+              placeholder="e.g. 2125551234"
+              autoComplete="tel"
+            />
+          </FieldRow>
           {(['resy', 'opentable'] as const).map((platform) => {
             const fieldMap = { resy: 'resyAuthToken', opentable: 'opentableSession' } as const;
             const labelMap = { resy: 'Resy', opentable: 'OpenTable' } as const;

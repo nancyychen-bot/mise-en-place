@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import type { UserSettings, DaysOfWeek } from '@/lib/types';
 import { BtnPrimary, BtnSecondary } from '@/components/buttons';
 
-const DEFAULTS: Omit<UserSettings, 'userId' | 'resyApiKey' | 'ntfyTopic' | 'ntfyPriority' | 'monitoringEnabled' | 'resyAuthToken' | 'opentableSession' | 'sevenroomsAuthToken' | 'tokenExpired'> = {
+const DEFAULTS: Omit<UserSettings, 'userId' | 'resyApiKey' | 'ntfyTopic' | 'ntfyPriority' | 'monitoringEnabled' | 'resyAuthToken' | 'opentableSession' | 'sevenroomsAuthToken' | 'tokenExpired' | 'phoneNumber'> = {
   earliestTime: '18:00',
   latestTime: '20:00',
   dayRange: 7,

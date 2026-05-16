@@ -210,6 +210,7 @@ export default function SetupPage() {
           <li>Go to the <strong>Application</strong> tab → <strong>Cookies</strong> → <code className="code">https://www.opentable.com</code></li>
           <li>Find the <code className="code">authCke</code> cookie (between <code className="code">ak_bmsc</code> and <code className="code">bm_lso</code>) and copy its value</li>
           <li>Paste it into the OpenTable Token field on your <Link href="/dashboard/account" style={{ textDecoration: 'underline' }}>Account</Link> page</li>
+          <li>Also add your <strong>phone number</strong> in the Platform Connections section — OpenTable requires it for bookings</li>
         </ol>
 
       </Step>

@@ -17,7 +17,7 @@ export async function GET() {
 
   const { data: settings } = await db
     .from('user_settings')
-    .select('ntfy_topic, ntfy_priority, monitoring_enabled, timezone, resy_api_key, resy_auth_token, opentable_session, sevenrooms_auth_token, token_expired')
+    .select('ntfy_topic, ntfy_priority, monitoring_enabled, timezone, resy_api_key, resy_auth_token, opentable_session, sevenrooms_auth_token, token_expired, phone_number')
     .eq('user_id', user.id)
     .single();
 
@@ -33,6 +33,7 @@ export async function GET() {
     opentableSession: settings?.opentable_session ? '••••••' : null,
     sevenroomsAuthToken: settings?.sevenrooms_auth_token ? '••••••' : null,
     tokenExpired: settings?.token_expired ?? {},
+    phoneNumber: settings?.phone_number ?? null,
   });
 }
 
@@ -47,6 +48,7 @@ const PatchSchema = z.object({
   resyAuthToken: z.string().max(500).optional(),
   opentableSession: z.string().max(500).optional(),
   sevenroomsAuthToken: z.string().max(500).optional(),
+  phoneNumber: z.string().max(20).optional(),
 });
 
 export async function PATCH(req: NextRequest) {
@@ -93,6 +95,7 @@ export async function PATCH(req: NextRequest) {
   if (d.monitoringEnabled !== undefined) settingsUpdate.monitoring_enabled = d.monitoringEnabled;
   if (d.timezone !== undefined) settingsUpdate.timezone = d.timezone;
   if (d.resyApiKey !== undefined) settingsUpdate.resy_api_key = d.resyApiKey || null;
+  if (d.phoneNumber !== undefined) settingsUpdate.phone_number = d.phoneNumber || null;
 
   if (d.resyAuthToken !== undefined || d.opentableSession !== undefined || d.sevenroomsAuthToken !== undefined) {
     const { data: current } = await db
