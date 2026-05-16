@@ -219,13 +219,10 @@ export async function scrapeOpenTableMultiDate(restaurantId, dates, partySize) {
 
     for (const date of dates) {
       try {
-        // Load page at multiple times to capture tokens across the full evening
-        for (const reqTime of ['17%3A00%3A00', '19%3A00%3A00', '21%3A30%3A00']) {
-          const dateUrl = `https://www.opentable.com/booking/restref/availability?rid=${restaurantId}&restRef=${restaurantId}&partySize=${partySize}&date=${date}&time=${reqTime}&lang=en-US`;
-          await page.goto(dateUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-          try { await page.waitForLoadState('networkidle', { timeout: 10000 }); } catch {}
-          await page.waitForTimeout(2000);
-        }
+        const dateUrl = `https://www.opentable.com/booking/restref/availability?rid=${restaurantId}&restRef=${restaurantId}&partySize=${partySize}&date=${date}&time=19%3A00%3A00&lang=en-US`;
+        await page.goto(dateUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        try { await page.waitForLoadState('networkidle', { timeout: 10000 }); } catch {}
+        await page.waitForTimeout(2000);
 
         // Navigate the calendar to the correct date (URL param is often ignored)
         try {
