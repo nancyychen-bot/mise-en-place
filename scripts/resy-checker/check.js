@@ -174,6 +174,14 @@ function inWindow(time, earliest, latest) {
   return true;
 }
 
+function getResyBookingUrl(restaurant, slot) {
+  const slug = restaurant.venue_slug ?? restaurant.venue_id;
+  const city = restaurant.venue_city ?? 'ny';
+  const size = restaurant.party_sizes?.[0] ?? restaurant.party_size;
+  const base = `https://resy.com/cities/${city}/venues/${slug}`;
+  return slot ? `${base}?date=${slot.date}&seats=${size}` : base;
+}
+
 // ── Auto-booking helpers ───────────────────────────────────────────
 
 function pickBestSlot(slots, preferredTime) {
@@ -293,7 +301,7 @@ async function main() {
 
   let { data: restaurants, error: restErr } = await db
     .from('restaurants')
-    .select('id, user_id, name, venue_id, venue_city, party_size, party_sizes, earliest_time, latest_time, day_range, date_start, date_end, auto_book, preferred_time, available_slots')
+    .select('id, user_id, name, venue_id, venue_slug, venue_city, party_size, party_sizes, earliest_time, latest_time, day_range, date_start, date_end, auto_book, preferred_time, available_slots')
     .eq('platform', 'resy')
     .eq('active', true);
 
@@ -475,9 +483,16 @@ async function main() {
                 });
                 const ntfyTopic = settingsMap.get(restaurant.user_id)?.ntfy_topic;
                 if (ntfyTopic) {
+                  const bookingUrl = getResyBookingUrl(restaurant, best);
                   await fetch(`https://ntfy.sh/${encodeURIComponent(ntfyTopic)}`, {
                     method: 'POST',
-                    headers: { Title: `Booked! ${restaurant.name}`, Priority: 'high', Tags: 'white_check_mark' },
+                    headers: {
+                      Title: `Booked! ${restaurant.name}`,
+                      Priority: 'high',
+                      Tags: 'white_check_mark',
+                      Click: bookingUrl,
+                      Actions: `view, View on Resy, ${bookingUrl}, clear=true`,
+                    },
                     body: `${best.displayTime} on ${best.date} for ${restaurant.party_sizes?.[0] ?? restaurant.party_size} guests`,
                   });
                 }
@@ -541,9 +556,16 @@ async function main() {
         if (ntfyTopic) {
           const timeList = [...new Set(newSlots.map(s => s.displayTime))].join(', ');
           const dateList = [...new Set(newSlots.map(s => s.date))].join(', ');
+          const bookingUrl = getResyBookingUrl(restaurant, newSlots[0]);
           await fetch(`https://ntfy.sh/${encodeURIComponent(ntfyTopic)}`, {
             method: 'POST',
-            headers: { Title: `${restaurant.name}`, Priority: settingsMap.get(restaurant.user_id)?.ntfy_priority ?? 'default', Tags: 'fork_and_knife' },
+            headers: {
+              Title: `${restaurant.name}`,
+              Priority: settingsMap.get(restaurant.user_id)?.ntfy_priority ?? 'default',
+              Tags: 'fork_and_knife',
+              Click: bookingUrl,
+              Actions: `view, Book Now, ${bookingUrl}, clear=true`,
+            },
             body: `${timeList} on ${dateList}`,
           });
         }
