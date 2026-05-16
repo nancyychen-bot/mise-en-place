@@ -292,9 +292,11 @@ async function main() {
         .single();
 
       if (userSettings?.opentable_session && !userSettings.token_expired?.opentable) {
-        const best = pickBestSlot(allSlots, restaurant.preferred_time);
+        // Prefer slots with booking tokens; fall back to best without
+        const slotsWithTokens = allSlots.filter(s => s.slotHash && s.slotAvailabilityToken);
+        const best = pickBestSlot(slotsWithTokens.length > 0 ? slotsWithTokens : allSlots, restaurant.preferred_time);
         if (best) {
-          console.log(`[check] best slot for ${restaurant.name}: ${best.time} on ${best.date}, hash=${best.slotHash ?? 'NONE'}, token=${best.slotAvailabilityToken ? 'YES' : 'NONE'}`);
+          console.log(`[check] best slot for ${restaurant.name}: ${best.time} on ${best.date}, hash=${best.slotHash ? 'YES' : 'NONE'}, token=${best.slotAvailabilityToken ? 'YES' : 'NONE'} (${slotsWithTokens.length} slots with tokens)`);
           try {
             // Load user profile for reservation details
             const { data: userProfile } = await db
