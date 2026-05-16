@@ -104,100 +104,59 @@ async function bookOpenTableSlot(page, restaurant, slot, authCookie, userInfo) {
   const dateTime = `${slot.date}T${slot.time}`;
   const csrfToken = parseOtCsrfToken(authCookie);
 
-  // If scraper didn't capture tokens, fetch them directly via GraphQL
+  // If scraper didn't capture tokens, load the availability page at the slot's
+  // exact time and intercept the tokens from the page's own API calls
   if (!slot.slotHash || !slot.slotAvailabilityToken) {
-    console.log(`[check] no tokens from scraper for ${slot.time}, fetching via GQL...`);
-    const gqlRes = await page.evaluate(
-      async ({ rid, date, time, partySize }) => {
-        const res = await fetch('https://www.opentable.com/dapi/fe/gql?optype=query&opname=RestaurantsAvailability', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            operationName: 'RestaurantsAvailability',
-            variables: {
-              restaurantIds: [Number(rid)],
-              date,
-              time,
-              partySize,
-              databaseRegion: 'NA',
-            },
-            extensions: {
-              persistedQuery: {
-                sha256Hash: 'e6b87021ed6e865a7778aa39d35d09864c1be29c683c707602dd3de43c854d86',
-              },
-            },
-          }),
-        });
-        return { status: res.status, body: await res.text() };
-      },
-      { rid, date: slot.date, time: slot.time, partySize }
-    );
+    console.log(`[check] no tokens from scraper for ${slot.time}, loading page at slot time...`);
+    const timeParam = encodeURIComponent(`${slot.time}:00`);
+    const tokenUrl = `https://www.opentable.com/booking/restref/availability?rid=${rid}&restRef=${rid}&partySize=${partySize}&date=${slot.date}&time=${timeParam}&lang=en-US`;
 
-    if (gqlRes.status === 200) {
+    const captured = {};
+    const handler = async (response) => {
+      const rUrl = response.url();
+      if (!rUrl.includes('availability') && !rUrl.includes('gql')) return;
       try {
-        const data = JSON.parse(gqlRes.body);
-        // Walk the response to find matching slot
-        const restaurants = data?.data?.restaurantsAvailability ?? data?.data?.availability ?? [];
-        for (const r of Array.isArray(restaurants) ? restaurants : [restaurants]) {
+        const ct = response.headers()['content-type'] ?? '';
+        if (!ct.includes('json')) return;
+        const json = await response.json();
+        // Determine base time from request URL
+        let baseMin = 19 * 60;
+        try {
+          const reqUrl = response.request().url();
+          const tm = reqUrl.match(/time=(\d{2})%3A(\d{2})/);
+          if (tm) baseMin = parseInt(tm[1]) * 60 + parseInt(tm[2]);
+        } catch {}
+        const avail = json?.data?.availability;
+        if (!Array.isArray(avail)) return;
+        for (const r of avail) {
           for (const day of r?.availabilityDays ?? []) {
             for (const s of day?.slots ?? []) {
               if (!s.isAvailable || !s.slotHash) continue;
-              slot.slotHash = slot.slotHash || s.slotHash;
-              slot.slotAvailabilityToken = slot.slotAvailabilityToken || s.slotAvailabilityToken;
+              const totalMin = baseMin + (s.timeOffsetMinutes ?? 0);
+              const h = Math.floor(totalMin / 60);
+              const m = totalMin % 60;
+              const t = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+              if (t === slot.time) {
+                captured.slotHash = s.slotHash;
+                captured.slotAvailabilityToken = s.slotAvailabilityToken;
+              }
             }
           }
         }
       } catch {}
-    }
-    console.log(`[check] after GQL fetch: hash=${slot.slotHash ? 'YES' : 'NONE'}, token=${slot.slotAvailabilityToken ? 'YES' : 'NONE'}, gql_status=${gqlRes.status}`);
+    };
 
-    // If still no tokens and GQL returned data, try the closest available slot's tokens
-    if (!slot.slotHash || !slot.slotAvailabilityToken) {
-      // Try RestRefAvailability endpoint (what the page itself uses)
-      const refRes = await page.evaluate(
-        async ({ rid, date, time, partySize }) => {
-          const res = await fetch(`https://www.opentable.com/dapi/fe/gql?optype=query&opname=RestRefAvailability`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              operationName: 'RestRefAvailability',
-              variables: {
-                restaurantId: Number(rid),
-                date,
-                time,
-                partySize,
-                databaseRegion: 'NA',
-              },
-              extensions: {
-                persistedQuery: {
-                  sha256Hash: 'a0b9ef2f88bb7ed0695f9a91f0879bfe68648942a8ed241e5a8bc3187492e8cb',
-                },
-              },
-            }),
-          });
-          return { status: res.status, body: await res.text().catch(() => '') };
-        },
-        { rid, date: slot.date, time: slot.time, partySize }
-      );
-      console.log(`[check] RestRefAvailability: status=${refRes.status}, body=${refRes.body.slice(0, 300)}`);
+    page.on('response', handler);
+    await page.goto(tokenUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    try { await page.waitForLoadState('networkidle', { timeout: 15000 }); } catch {}
+    await page.waitForTimeout(2000);
+    page.removeListener('response', handler);
 
-      if (refRes.status === 200) {
-        try {
-          const data = JSON.parse(refRes.body);
-          function findTokens(obj, depth = 0) {
-            if (!obj || typeof obj !== 'object' || depth > 8) return;
-            if (obj.slotHash && obj.isAvailable !== false) {
-              slot.slotHash = slot.slotHash || obj.slotHash;
-              slot.slotAvailabilityToken = slot.slotAvailabilityToken || obj.slotAvailabilityToken;
-            }
-            if (Array.isArray(obj)) { for (const i of obj) findTokens(i, depth + 1); }
-            else { for (const v of Object.values(obj)) findTokens(v, depth + 1); }
-          }
-          findTokens(data);
-        } catch {}
-      }
-      console.log(`[check] after RestRef: hash=${slot.slotHash ? 'YES' : 'NONE'}, token=${slot.slotAvailabilityToken ? 'YES' : 'NONE'}`);
+    if (captured.slotHash) {
+      slot.slotHash = captured.slotHash;
+      slot.slotAvailabilityToken = captured.slotAvailabilityToken;
     }
+    console.log(`[check] after page load: hash=${slot.slotHash ? 'YES' : 'NONE'}, token=${slot.slotAvailabilityToken ? 'YES' : 'NONE'}`);
   }
 
   if (!slot.slotHash || !slot.slotAvailabilityToken) {
