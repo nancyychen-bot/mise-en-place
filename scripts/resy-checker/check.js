@@ -491,7 +491,6 @@ async function main() {
                       Priority: 'high',
                       Tags: 'white_check_mark',
                       Click: bookingUrl,
-                      Actions: `view, View on Resy, ${bookingUrl}, clear=true`,
                     },
                     body: `${best.displayTime} on ${best.date} for ${restaurant.party_sizes?.[0] ?? restaurant.party_size} guests`,
                   });
@@ -551,7 +550,7 @@ async function main() {
       if (logErr) console.error(`[resy-check] activity_log insert failed: ${logErr.message}`);
 
       // Send ntfy for new slots (even without auto-book)
-      if (newSlots.length > 0 && !restaurant.auto_book) {
+      if (newSlots.length > 0) {
         const ntfyTopic = settingsMap.get(restaurant.user_id)?.ntfy_topic;
         if (ntfyTopic) {
           const timeList = [...new Set(newSlots.map(s => s.displayTime))].join(', ');
@@ -564,7 +563,6 @@ async function main() {
               Priority: settingsMap.get(restaurant.user_id)?.ntfy_priority ?? 'default',
               Tags: 'fork_and_knife',
               Click: bookingUrl,
-              Actions: `view, Book Now, ${bookingUrl}, clear=true`,
             },
             body: `${timeList} on ${dateList}`,
           });
