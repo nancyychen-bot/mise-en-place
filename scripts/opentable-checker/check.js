@@ -93,113 +93,118 @@ async function handleAuthExpired(userId, platform) {
   });
 }
 
-function parseOtCsrfToken(cookieValue) {
-  const params = new URLSearchParams(cookieValue);
-  return params.get('atk') ?? cookieValue;
-}
+const OT_GQL_HASH = 'eba0408aa4a01f509f1f0697c855b9154736a7ac872c7ba98119d4f61dc8ba47';
 
-async function bookOpenTableSlot(page, restaurant, slot, authCookie, userInfo) {
+async function bookOpenTableSlot(page, restaurant, slot, userInfo) {
   const rid = restaurant.venue_id;
   const partySize = restaurant.party_sizes?.[0] ?? restaurant.party_size;
-  const dateTime = `${slot.date}T${slot.time}`;
-  const csrfToken = parseOtCsrfToken(authCookie);
 
-  // If scraper didn't capture tokens, load the availability page at the slot's
-  // exact time and intercept the tokens from the page's own API calls
-  if (!slot.slotHash || !slot.slotAvailabilityToken) {
-    console.log(`[check] no tokens from scraper for ${slot.time}, loading page at slot time...`);
-    const timeParam = encodeURIComponent(`${slot.time}:00`);
-    const tokenUrl = `https://www.opentable.com/booking/restref/availability?rid=${rid}&restRef=${rid}&partySize=${partySize}&date=${slot.date}&time=${timeParam}&lang=en-US`;
+  // Step 1: Extract CSRF token from the page
+  const csrfToken = await page.evaluate(() => window.__CSRF_TOKEN__);
+  if (!csrfToken) {
+    return { success: false, error: 'no_csrf_token' };
+  }
+  console.log(`[check] got CSRF token`);
 
-    const captured = {};
-    const handler = async (response) => {
-      const rUrl = response.url();
-      if (!rUrl.includes('availability') && !rUrl.includes('gql')) return;
-      try {
-        const ct = response.headers()['content-type'] ?? '';
-        if (!ct.includes('json')) return;
-        const json = await response.json();
-        // Determine base time from request URL
-        let baseMin = 19 * 60;
-        try {
-          const reqUrl = response.request().url();
-          const tm = reqUrl.match(/time=(\d{2})%3A(\d{2})/);
-          if (tm) baseMin = parseInt(tm[1]) * 60 + parseInt(tm[2]);
-        } catch {}
-        const avail = json?.data?.availability;
-        if (!Array.isArray(avail)) return;
-        for (const r of avail) {
-          for (const day of r?.availabilityDays ?? []) {
-            for (const s of day?.slots ?? []) {
-              if (!s.isAvailable || !s.slotHash) continue;
-              const totalMin = baseMin + (s.timeOffsetMinutes ?? 0);
-              const h = Math.floor(totalMin / 60);
-              const m = totalMin % 60;
-              const t = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-              if (t === slot.time) {
-                captured.slotHash = s.slotHash;
-                captured.slotAvailabilityToken = s.slotAvailabilityToken;
-              }
+  // Step 2: Get slot tokens via GQL (same endpoint the page uses)
+  const gqlRes = await page.evaluate(
+    async ({ rid, date, time, partySize, csrfToken, hash }) => {
+      const res = await fetch('https://www.opentable.com/dapi/fe/gql?optype=query&opname=RestRefAvailability', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
+        body: JSON.stringify({
+          operationName: 'RestRefAvailability',
+          variables: {
+            restaurantIds: [Number(rid)],
+            date, time, partySize,
+            databaseRegion: 'NA',
+            forwardDays: 0, forwardTimeslots: 2, backwardTimeslots: 2,
+            forwardMinutes: 60, backwardMinutes: 60,
+            requireTypes: ['Standard'],
+            enableTicketedExperiences: true,
+            enablePrivateDiningExperiences: false,
+            privilegedAccess: [], transformOutdoorToDefault: false,
+            slotDiscovery: ['off'], useCBR: true,
+            rid: Number(rid),
+          },
+          extensions: { persistedQuery: { version: 1, sha256Hash: hash } },
+        }),
+      });
+      return { status: res.status, body: await res.text() };
+    },
+    { rid, date: slot.date, time: slot.time, partySize, csrfToken, hash: OT_GQL_HASH }
+  );
+
+  if (gqlRes.status !== 200) {
+    return { success: false, error: `gql_http_${gqlRes.status}: ${gqlRes.body.slice(0, 200)}` };
+  }
+
+  // Find the slot with timeOffsetMinutes=0 (exact match for requested time)
+  let slotHash = null;
+  let slotAvailabilityToken = null;
+  try {
+    const data = JSON.parse(gqlRes.body);
+    const avail = data?.data?.availability;
+    if (Array.isArray(avail)) {
+      for (const r of avail) {
+        if (r?.restaurantId !== Number(rid)) continue;
+        for (const day of r?.availabilityDays ?? []) {
+          if (day.dayOffset !== 0) continue;
+          for (const s of day?.slots ?? []) {
+            if (!s.isAvailable || !s.slotHash) continue;
+            if (s.timeOffsetMinutes === 0) {
+              slotHash = s.slotHash;
+              slotAvailabilityToken = s.slotAvailabilityToken;
+              break;
             }
           }
         }
-      } catch {}
-    };
-
-    page.on('response', handler);
-    await page.goto(tokenUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    try { await page.waitForLoadState('networkidle', { timeout: 15000 }); } catch {}
-    await page.waitForTimeout(2000);
-    page.removeListener('response', handler);
-
-    if (captured.slotHash) {
-      slot.slotHash = captured.slotHash;
-      slot.slotAvailabilityToken = captured.slotAvailabilityToken;
+        if (slotHash) break;
+      }
     }
-    console.log(`[check] after page load: hash=${slot.slotHash ? 'YES' : 'NONE'}, token=${slot.slotAvailabilityToken ? 'YES' : 'NONE'}`);
-  }
+  } catch {}
 
-  if (!slot.slotHash || !slot.slotAvailabilityToken) {
-    return { success: false, error: 'no_slot_tokens' };
+  if (!slotHash) {
+    return { success: false, error: `no_slot_hash_in_gql` };
   }
+  console.log(`[check] got slot tokens: hash=${slotHash}`);
 
+  // Step 3: Book via make-reservation API
   const bookRes = await page.evaluate(
-    async ({ url, body, csrfToken }) => {
-      const res = await fetch(url, {
+    async ({ rid, dateTime, partySize, slotHash, slotAvailabilityToken, csrfToken, userInfo }) => {
+      const res = await fetch('https://www.opentable.com/dapi/booking/make-reservation', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-csrf-token': csrfToken,
-        },
-        body: JSON.stringify(body),
+        headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
+        body: JSON.stringify({
+          restaurantId: Number(rid),
+          slotAvailabilityToken,
+          slotHash,
+          isModify: false,
+          reservationDateTime: dateTime,
+          partySize,
+          firstName: userInfo.firstName,
+          lastName: userInfo.lastName,
+          email: userInfo.email,
+          phoneNumber: userInfo.phone || '',
+          phoneNumberCountryId: 'US',
+          country: 'US',
+          reservationType: 'Standard',
+          reservationAttribute: 'default',
+          diningAreaId: 1,
+          pointsType: 'Standard',
+          points: 100,
+          optInEmailRestaurant: false,
+        }),
       });
       return { status: res.status, body: await res.text() };
     },
     {
-      url: 'https://www.opentable.com/dapi/booking/make-reservation',
-      body: {
-        restaurantId: Number(rid),
-        slotAvailabilityToken: slot.slotAvailabilityToken,
-        slotHash: slot.slotHash,
-        isModify: false,
-        reservationDateTime: dateTime,
-        partySize,
-        firstName: userInfo.firstName || 'Guest',
-        lastName: userInfo.lastName || '',
-        email: userInfo.email || '',
-        phoneNumber: userInfo.phone || '',
-        phoneNumberCountryId: 'US',
-        country: 'US',
-        reservationType: 'Standard',
-        reservationAttribute: 'default',
-        diningAreaId: 1,
-        pointsType: 'Standard',
-        points: 100,
-        optInEmailRestaurant: false,
-      },
-      csrfToken,
+      rid, dateTime: `${slot.date}T${slot.time}`, partySize,
+      slotHash, slotAvailabilityToken, csrfToken, userInfo,
     }
   );
+
+  console.log(`[check] make-reservation: status=${bookRes.status}, body=${bookRes.body.slice(0, 300)}`);
 
   if (bookRes.status === 401 || bookRes.status === 403) {
     return { success: false, error: 'auth_expired', authExpired: true };
@@ -347,13 +352,10 @@ async function main() {
         .single();
 
       if (userSettings?.opentable_session && !userSettings.token_expired?.opentable) {
-        // Prefer slots with booking tokens; fall back to best without
-        const slotsWithTokens = allSlots.filter(s => s.slotHash && s.slotAvailabilityToken);
-        const best = pickBestSlot(slotsWithTokens.length > 0 ? slotsWithTokens : allSlots, restaurant.preferred_time);
+        const best = pickBestSlot(allSlots, restaurant.preferred_time);
         if (best) {
-          console.log(`[check] best slot for ${restaurant.name}: ${best.time} on ${best.date}, hash=${best.slotHash ? 'YES' : 'NONE'}, token=${best.slotAvailabilityToken ? 'YES' : 'NONE'} (${slotsWithTokens.length} slots with tokens)`);
+          console.log(`[check] best slot for ${restaurant.name}: ${best.displayTime} on ${best.date}`);
           try {
-            // Load user profile for reservation details
             const { data: userProfile } = await db
               .from('users')
               .select('email, display_name')
@@ -377,7 +379,7 @@ async function main() {
             const bookingPage = await ctx.newPage();
             await bookingPage.goto('https://www.opentable.com', { waitUntil: 'domcontentloaded', timeout: 30000 });
             await bookingPage.waitForTimeout(2000);
-            const result = await bookOpenTableSlot(bookingPage, restaurant, best, userSettings.opentable_session, userInfo);
+            const result = await bookOpenTableSlot(bookingPage, restaurant, best, userInfo);
             await bookingPage.close().catch(() => {});
             if (result.success) {
               console.log(`[check] AUTO-BOOKED ${restaurant.name} at ${best.displayTime} on ${best.date} (${result.confirmationId})`);
