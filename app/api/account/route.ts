@@ -17,7 +17,7 @@ export async function GET() {
 
   const { data: settings } = await db
     .from('user_settings')
-    .select('ntfy_topic, ntfy_priority, monitoring_enabled, timezone, resy_api_key, resy_auth_token, opentable_session, sevenrooms_auth_token, token_expired, phone_number')
+    .select('ntfy_topic, ntfy_priority, monitoring_enabled, timezone, resy_api_key, resy_auth_token, opentable_session, sevenrooms_auth_token, token_expired, phone_number, stripe_payment_method')
     .eq('user_id', user.id)
     .single();
 
@@ -34,6 +34,7 @@ export async function GET() {
     sevenroomsAuthToken: settings?.sevenrooms_auth_token ? '••••••' : null,
     tokenExpired: settings?.token_expired ?? {},
     phoneNumber: settings?.phone_number ?? null,
+    stripePaymentMethod: settings?.stripe_payment_method ? '••••••' : null,
   });
 }
 
@@ -49,6 +50,7 @@ const PatchSchema = z.object({
   opentableSession: z.string().max(500).optional(),
   sevenroomsAuthToken: z.string().max(500).optional(),
   phoneNumber: z.string().max(20).optional(),
+  stripePaymentMethod: z.string().max(200).optional(),
 });
 
 export async function PATCH(req: NextRequest) {
@@ -96,6 +98,7 @@ export async function PATCH(req: NextRequest) {
   if (d.timezone !== undefined) settingsUpdate.timezone = d.timezone;
   if (d.resyApiKey !== undefined) settingsUpdate.resy_api_key = d.resyApiKey || null;
   if (d.phoneNumber !== undefined) settingsUpdate.phone_number = d.phoneNumber || null;
+  if (d.stripePaymentMethod !== undefined) settingsUpdate.stripe_payment_method = d.stripePaymentMethod || null;
 
   if (d.resyAuthToken !== undefined || d.opentableSession !== undefined || d.sevenroomsAuthToken !== undefined) {
     const { data: current } = await db

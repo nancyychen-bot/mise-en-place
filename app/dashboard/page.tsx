@@ -32,6 +32,7 @@ export default async function DashboardPage() {
     sevenroomsAuthToken: settings?.sevenrooms_auth_token ? '••••••' : null,
     tokenExpired: (settings?.token_expired as Record<string, boolean>) ?? {},
     phoneNumber: settings?.phone_number ?? null,
+    stripePaymentMethod: settings?.stripe_payment_method ? '••••••' : null,
   };
 
   // Build initial slot map from persisted available_slots

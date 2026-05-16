@@ -95,7 +95,7 @@ async function handleAuthExpired(userId, platform) {
 
 const OT_GQL_HASH = 'eba0408aa4a01f509f1f0697c855b9154736a7ac872c7ba98119d4f61dc8ba47';
 
-async function bookOpenTableSlot(page, restaurant, slot, userInfo) {
+async function bookOpenTableSlot(page, restaurant, slot, userInfo, stripePaymentMethod) {
   const rid = restaurant.venue_id;
   const partySize = restaurant.party_sizes?.[0] ?? restaurant.party_size;
 
@@ -171,36 +171,39 @@ async function bookOpenTableSlot(page, restaurant, slot, userInfo) {
 
   // Step 3: Book via make-reservation API
   const bookRes = await page.evaluate(
-    async ({ rid, dateTime, partySize, slotHash, slotAvailabilityToken, csrfToken, userInfo }) => {
+    async ({ rid, dateTime, partySize, slotHash, slotAvailabilityToken, csrfToken, userInfo, paymentMethod }) => {
+      const body = {
+        restaurantId: Number(rid),
+        slotAvailabilityToken,
+        slotHash,
+        isModify: false,
+        reservationDateTime: dateTime,
+        partySize,
+        firstName: userInfo.firstName,
+        lastName: userInfo.lastName,
+        email: userInfo.email,
+        phoneNumber: userInfo.phone || '',
+        phoneNumberCountryId: 'US',
+        country: 'US',
+        reservationType: 'Standard',
+        reservationAttribute: 'default',
+        diningAreaId: 1,
+        pointsType: 'Standard',
+        points: 100,
+        optInEmailRestaurant: false,
+      };
+      if (paymentMethod) body.paymentMethod = paymentMethod;
       const res = await fetch('https://www.opentable.com/dapi/booking/make-reservation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
-        body: JSON.stringify({
-          restaurantId: Number(rid),
-          slotAvailabilityToken,
-          slotHash,
-          isModify: false,
-          reservationDateTime: dateTime,
-          partySize,
-          firstName: userInfo.firstName,
-          lastName: userInfo.lastName,
-          email: userInfo.email,
-          phoneNumber: userInfo.phone || '',
-          phoneNumberCountryId: 'US',
-          country: 'US',
-          reservationType: 'Standard',
-          reservationAttribute: 'default',
-          diningAreaId: 1,
-          pointsType: 'Standard',
-          points: 100,
-          optInEmailRestaurant: false,
-        }),
+        body: JSON.stringify(body),
       });
       return { status: res.status, body: await res.text() };
     },
     {
       rid, dateTime: `${slot.date}T${slot.time}`, partySize,
       slotHash, slotAvailabilityToken, csrfToken, userInfo,
+      paymentMethod: stripePaymentMethod,
     }
   );
 
@@ -347,7 +350,7 @@ async function main() {
     if (restaurant.auto_book && allSlots.length > 0) {
       const { data: userSettings } = await db
         .from('user_settings')
-        .select('opentable_session, token_expired, ntfy_topic, phone_number')
+        .select('opentable_session, token_expired, ntfy_topic, phone_number, stripe_payment_method')
         .eq('user_id', restaurant.user_id)
         .single();
 
@@ -379,7 +382,7 @@ async function main() {
             const bookingPage = await ctx.newPage();
             await bookingPage.goto('https://www.opentable.com', { waitUntil: 'domcontentloaded', timeout: 30000 });
             await bookingPage.waitForTimeout(2000);
-            const result = await bookOpenTableSlot(bookingPage, restaurant, best, userInfo);
+            const result = await bookOpenTableSlot(bookingPage, restaurant, best, userInfo, userSettings.stripe_payment_method);
             await bookingPage.close().catch(() => {});
             if (result.success) {
               console.log(`[check] AUTO-BOOKED ${restaurant.name} at ${best.displayTime} on ${best.date} (${result.confirmationId})`);
