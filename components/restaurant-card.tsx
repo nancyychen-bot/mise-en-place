@@ -107,6 +107,7 @@ export default function RestaurantCard({
   const [editReleaseDays, setEditReleaseDays] = useState<string>(String(restaurant.releaseDaysAhead ?? ''));
   const [editReleaseTime, setEditReleaseTime] = useState(restaurant.releaseTime ?? '');
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const hasSlots = slots.length > 0;
   const needsId = restaurant.platform === 'opentable' && !/^\d+$/.test(restaurant.venueId);
@@ -136,6 +137,11 @@ export default function RestaurantCard({
   }
 
   async function handleSave() {
+    setSaveError('');
+    if (editAutoBook && editReleaseDays && !editReleaseTime) {
+      setSaveError('Release time is required when auto-book is on');
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch(`/api/restaurants/${restaurant.id}`, {
@@ -459,6 +465,11 @@ export default function RestaurantCard({
                 />
               </div>
             </>
+          )}
+          {saveError && (
+            <p style={{ fontSize: '11px', color: 'var(--tag-red)', fontWeight: 600, marginBottom: '6px' }}>
+              {saveError}
+            </p>
           )}
           <div style={{ display: 'flex', gap: '6px' }}>
             <button
