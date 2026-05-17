@@ -10,7 +10,7 @@
     },
     {
       "path": "/api/cron/snipe-scheduler",
-      "schedule": "0 11,12,13,14,15 * * *"
+      "schedule": "*/15 11,12,13,14,15,16 * * *"
     }
   ]
 }
