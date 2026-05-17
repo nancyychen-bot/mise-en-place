@@ -418,7 +418,7 @@ async function main() {
 
   let checked = 0;
   for (const [venueId, venue] of uniqueVenues) {
-    const dates = [...venue.allDates].sort();
+    const dates = shuffle([...venue.allDates]);
     const sizes = [...venue.allSizes];
 
     // Fetch all slots for this venue (union of all users' date/size needs)
