@@ -88,6 +88,7 @@ export default function RestaurantCard({
   onUpdate,
   onValidateAutoBook,
 }: RestaurantCardProps) {
+  const [hovered, setHovered] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [fixingId, setFixingId] = useState(false);
@@ -226,6 +227,8 @@ export default function RestaurantCard({
 
   return (
     <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
         background: hasSlots ? 'var(--green-light)' : 'var(--bg)',
         padding: '24px 24px 20px',
@@ -235,8 +238,11 @@ export default function RestaurantCard({
         display: 'flex',
         flexDirection: 'column',
         minHeight: '200px',
-        transition: 'background 0.15s',
+        transition: 'background 0.15s, transform 0.15s, box-shadow 0.15s',
         opacity: restaurant.active ? 1 : 0.55,
+        animation: 'fadeIn 0.3s ease-out',
+        transform: hovered ? 'translateY(-1px)' : '',
+        boxShadow: hovered ? '0 2px 8px rgba(0,0,0,0.06)' : '',
       }}
     >
       <div
@@ -509,29 +515,32 @@ export default function RestaurantCard({
           <p
             style={{
               fontSize: '11px', letterSpacing: '0.04em', color: 'var(--text-muted)',
-              textTransform: 'uppercase', marginBottom: '12px', fontWeight: 500,
+              textTransform: 'uppercase', marginBottom: '4px', fontWeight: 500,
             }}
           >
             {sizeLabel} · ID {restaurant.venueId} · Checked{' '}
             {formatRelativeTime(restaurant.lastChecked)}
           </p>
-          {(restaurant.earliestTime && restaurant.latestTime || restaurant.dateStart && restaurant.dateEnd) && (
-            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '12px', marginTop: '-4px', fontWeight: 500 }}>
-              {restaurant.earliestTime && restaurant.latestTime && `${fmt12h(restaurant.earliestTime)}–${fmt12h(restaurant.latestTime)}`}
-              {restaurant.earliestTime && restaurant.latestTime && restaurant.dateStart && restaurant.dateEnd && ' · '}
-              {restaurant.dateStart && restaurant.dateEnd && `${restaurant.dateStart.slice(5).replace('-', '/')}–${restaurant.dateEnd.slice(5).replace('-', '/')}`}
-            </p>
-          )}
-          {restaurant.autoBook && (
-            <p style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.04em', color: 'var(--tag-green)', marginBottom: '12px', marginTop: '-4px' }}>
-              Auto-book · {restaurant.preferredTime ? fmt12h(restaurant.preferredTime) : 'earliest'}
-            </p>
-          )}
-          {restaurant.releaseDaysAhead && restaurant.releaseTime && (
-            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '12px', marginTop: '-4px' }}>
-              Releases {restaurant.releaseDaysAhead}d ahead at {fmt12h(restaurant.releaseTime)}
-            </p>
-          )}
+          {(() => {
+            const parts: string[] = [];
+            if (restaurant.earliestTime && restaurant.latestTime) {
+              parts.push(`${fmt12h(restaurant.earliestTime)}–${fmt12h(restaurant.latestTime)}`);
+            }
+            if (restaurant.dateStart && restaurant.dateEnd) {
+              parts.push(`${restaurant.dateStart.slice(5).replace('-', '/')}–${restaurant.dateEnd.slice(5).replace('-', '/')}`);
+            }
+            if (restaurant.autoBook) {
+              parts.push(`Auto-book ${restaurant.preferredTime ? fmt12h(restaurant.preferredTime) : 'earliest'}`);
+            }
+            if (restaurant.releaseDaysAhead && restaurant.releaseTime) {
+              parts.push(`Releases ${restaurant.releaseDaysAhead}d at ${fmt12h(restaurant.releaseTime)}`);
+            }
+            return parts.length > 0 ? (
+              <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '12px', fontWeight: 500 }}>
+                {parts.join(' · ')}
+              </p>
+            ) : <div style={{ marginBottom: '12px' }} />;
+          })()}
         </>
       )}
 
@@ -593,8 +602,9 @@ export default function RestaurantCard({
           ))}
         </div>
       ) : (
-        <p style={{ marginTop: 'auto', paddingTop: '12px', fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '0.04em', fontStyle: 'italic' }}>
-          No slots in your window
+        <p style={{ marginTop: 'auto', paddingTop: '12px', fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--text-muted)', opacity: 0.4, animation: 'slotIn 1.5s ease-in-out infinite alternate', flexShrink: 0 }} />
+          Watching for openings
         </p>
       )}
     </div>
