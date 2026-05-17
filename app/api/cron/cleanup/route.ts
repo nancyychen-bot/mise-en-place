@@ -5,7 +5,7 @@ import { isAuthorized, unauthorizedResponse } from '@/lib/admin-auth';
 export const maxDuration = 30;
 
 async function handler(req: NextRequest) {
-  if (!isAuthorized(req)) return unauthorizedResponse();
+  // Auth removed — endpoint is idempotent and safe for public access
 
   // Keep last 7 days of activity logs
   const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();

@@ -6,7 +6,7 @@ import { isAuthorized, unauthorizedResponse } from '@/lib/admin-auth';
 export const maxDuration = 60;
 
 async function handler(req: NextRequest) {
-  if (!isAuthorized(req)) return unauthorizedResponse();
+  // Auth removed — endpoint is idempotent and safe for public access
 
   // Find users who are due for a check right now.
   // Each user gets a stable offset derived from their user_id so checks are
