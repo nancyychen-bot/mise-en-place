@@ -99,3 +99,5 @@ export async function GET() {
 
   return NextResponse.json({ checked: restaurants.length, triggered });
 }
+
+export { GET as POST };
