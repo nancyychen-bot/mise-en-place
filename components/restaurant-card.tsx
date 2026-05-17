@@ -23,6 +23,12 @@ function getBookingUrl(restaurant: Restaurant, slot?: Slot): string {
     const base = `https://resy.com/cities/${city}/venues/${slug}`;
     return slot ? `${base}?date=${slot.date}&seats=${primarySize}` : base;
   } else if (restaurant.platform === 'opentable') {
+    if (/^\d+$/.test(slug)) {
+      const base = `https://www.opentable.com/booking/restref/availability?rid=${slug}&restRef=${slug}`;
+      return slot
+        ? `${base}&partySize=${primarySize}&date=${slot.date}&time=${encodeURIComponent(slot.time + ':00')}`
+        : base;
+    }
     const base = `https://www.opentable.com/r/${slug}`;
     return slot
       ? `${base}?covers=${primarySize}&dateTime=${slot.date}T${slot.time}:00`
