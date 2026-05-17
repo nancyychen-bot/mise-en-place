@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -40,10 +41,9 @@ export default function PrimaryNav() {
       }}
     >
       {NAV_ITEMS.map(({ label, href }, i) => (
-        <>
+        <React.Fragment key={href}>
         {i === 3 && <span className="min-[600px]:hidden" style={{ flexBasis: '100%', height: 0 }} />}
         <Link
-          key={href}
           href={href}
           style={{
             display: 'inline-block',
@@ -70,7 +70,7 @@ export default function PrimaryNav() {
         >
           {label}
         </Link>
-        </>
+        </React.Fragment>
       ))}
     </nav>
   );

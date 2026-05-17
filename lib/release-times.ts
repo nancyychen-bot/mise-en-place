@@ -12,7 +12,6 @@ const KNOWN_RELEASES: Record<string, ReleaseInfo> = {
   'torrisi': { daysAhead: 30, time: '10:00' },
   '4 charles prime rib': { daysAhead: 21, time: '09:00' },
   'tatiana': { daysAhead: 28, time: '12:00' },
-  'atomix': { daysAhead: 30, time: '00:00' },
   'bong': { daysAhead: 21, time: '09:00' },
   'semma': { daysAhead: 7, time: '09:00' },
   'estela': { daysAhead: 14, time: '09:00' },
