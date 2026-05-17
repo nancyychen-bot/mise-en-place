@@ -5,7 +5,7 @@ import { db } from '@/lib/db';
 import { parseResyVenueInput, parseOpenTableVenueInput, parseSevenRoomsVenueInput } from '@/lib/venue-parser';
 import { resolveResyVenueId } from '@/lib/resy';
 import { resolveOpenTableVenueId } from '@/lib/opentable';
-import { lookupReleaseTime } from '@/lib/release-times';
+import { lookupReleaseTime, fetchReleaseTime } from '@/lib/release-times';
 
 export async function GET() {
   const user = await requireUser().catch(() => null);
@@ -107,7 +107,9 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const release = lookupReleaseTime(name);
+  // Try Snatchd first for live data, fall back to static lookup
+  const release = await fetchReleaseTime(name, restaurant.venue_slug).catch(() => null)
+    ?? lookupReleaseTime(name);
   if (release) {
     await db.from('restaurants').update({
       release_days_ahead: release.daysAhead,

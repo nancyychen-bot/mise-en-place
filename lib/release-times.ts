@@ -34,3 +34,44 @@ export function lookupReleaseTime(restaurantName: string): ReleaseInfo | null {
   }
   return null;
 }
+
+function slugify(name: string): string {
+  return name.toLowerCase().replace(/['']/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+function parseSnatchdText(text: string): ReleaseInfo | null {
+  const match = text.match(/opens at (\d+) days? in advance at (\d+)\s*(AM|PM)/i);
+  if (!match) return null;
+  let hours = parseInt(match[2], 10);
+  const period = match[3].toUpperCase();
+  if (period === 'PM' && hours !== 12) hours += 12;
+  if (period === 'AM' && hours === 12) hours = 0;
+  return {
+    daysAhead: parseInt(match[1], 10),
+    time: `${String(hours).padStart(2, '0')}:00`,
+  };
+}
+
+export async function fetchReleaseTime(restaurantName: string, venueSlug?: string | null): Promise<ReleaseInfo | null> {
+  const slugs = [
+    venueSlug,
+    slugify(restaurantName),
+    slugify(restaurantName).replace(/-/g, ''),
+  ].filter(Boolean) as string[];
+
+  for (const slug of slugs) {
+    try {
+      const res = await fetch(`https://www.snatchd.app/${slug}`, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible)' },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) continue;
+      const text = await res.text();
+      const info = parseSnatchdText(text);
+      if (info) return info;
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
