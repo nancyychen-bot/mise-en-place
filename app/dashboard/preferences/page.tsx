@@ -99,106 +99,112 @@ export default function PreferencesPage() {
       <form onSubmit={handleSave}>
         {/* Time Window */}
         <h2 style={sectionHeaderStyle}>Time Window</h2>
-        <div
-          style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}
-          className="max-[720px]:grid-cols-1"
-        >
-          <div>
-            <label htmlFor="earliestTime" style={labelStyle}>Earliest Time</label>
-            <input
-              id="earliestTime"
-              type="time"
-              className="form-input"
-              value={prefs.earliestTime}
-              onChange={(e) => update('earliestTime', e.target.value)}
-            />
-          </div>
-          <div>
-            <label htmlFor="latestTime" style={labelStyle}>Latest Time</label>
-            <input
-              id="latestTime"
-              type="time"
-              className="form-input"
-              value={prefs.latestTime}
-              onChange={(e) => update('latestTime', e.target.value)}
-            />
+        <div style={{ border: '1px solid var(--border-light)', padding: '20px 24px', background: 'var(--bg)' }}>
+          <div
+            style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}
+            className="max-[720px]:grid-cols-1"
+          >
+            <div>
+              <label htmlFor="earliestTime" style={labelStyle}>Earliest Time</label>
+              <input
+                id="earliestTime"
+                type="time"
+                className="form-input"
+                value={prefs.earliestTime}
+                onChange={(e) => update('earliestTime', e.target.value)}
+              />
+            </div>
+            <div>
+              <label htmlFor="latestTime" style={labelStyle}>Latest Time</label>
+              <input
+                id="latestTime"
+                type="time"
+                className="form-input"
+                value={prefs.latestTime}
+                onChange={(e) => update('latestTime', e.target.value)}
+              />
+            </div>
           </div>
         </div>
 
         {/* Day Range */}
         <h2 style={sectionHeaderStyle}>Day Range</h2>
-        <div
-          style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}
-          className="max-[720px]:grid-cols-1"
-        >
-          <div>
-            <label htmlFor="dayRange" style={labelStyle}>How Many Days Ahead</label>
-            <select
-              id="dayRange"
-              className="form-select"
-              value={prefs.dayRange}
-              onChange={(e) => update('dayRange', Number(e.target.value))}
-            >
-              {[1, 3, 7, 14, 30, 60].map((n) => (
-                <option key={n} value={n}>{n} days</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="daysOfWeek" style={labelStyle}>Days of Week</label>
-            <select
-              id="daysOfWeek"
-              className="form-select"
-              value={prefs.daysOfWeek}
-              onChange={(e) => update('daysOfWeek', e.target.value as DaysOfWeek)}
-            >
-              <option value="all">All days</option>
-              <option value="weekdays">Weekdays only</option>
-              <option value="weekends">Weekends only</option>
-              <option value="sat">Saturdays only</option>
-              <option value="fri-sun">Fri–Sun</option>
-            </select>
+        <div style={{ border: '1px solid var(--border-light)', padding: '20px 24px', background: 'var(--bg)' }}>
+          <div
+            style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}
+            className="max-[720px]:grid-cols-1"
+          >
+            <div>
+              <label htmlFor="dayRange" style={labelStyle}>How Many Days Ahead</label>
+              <select
+                id="dayRange"
+                className="form-select"
+                value={prefs.dayRange}
+                onChange={(e) => update('dayRange', Number(e.target.value))}
+              >
+                {[1, 3, 7, 14, 30, 60].map((n) => (
+                  <option key={n} value={n}>{n} days</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="daysOfWeek" style={labelStyle}>Days of Week</label>
+              <select
+                id="daysOfWeek"
+                className="form-select"
+                value={prefs.daysOfWeek}
+                onChange={(e) => update('daysOfWeek', e.target.value as DaysOfWeek)}
+              >
+                <option value="all">All days</option>
+                <option value="weekdays">Weekdays only</option>
+                <option value="weekends">Weekends only</option>
+                <option value="sat">Saturdays only</option>
+                <option value="fri-sun">Fri–Sun</option>
+              </select>
+            </div>
           </div>
         </div>
 
         {/* Check Interval */}
         <h2 style={sectionHeaderStyle}>Check Interval</h2>
-        <div
-          style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '24px' }}
-          className="max-[720px]:grid-cols-1"
-        >
-          <div>
-            <label htmlFor="checkIntervalMin" style={labelStyle}>Check Every</label>
-            <select
-              id="checkIntervalMin"
-              className="form-select"
-              value={prefs.checkIntervalMin}
-              onChange={(e) => update('checkIntervalMin', Number(e.target.value))}
-            >
-              {[5, 10, 15, 30, 60].map((n) => (
-                <option key={n} value={n}>{n} minutes</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="activeHoursStart" style={labelStyle}>Active Hours Start</label>
-            <input
-              id="activeHoursStart"
-              type="time"
-              className="form-input"
-              value={prefs.activeHoursStart}
-              onChange={(e) => update('activeHoursStart', e.target.value)}
-            />
-          </div>
-          <div>
-            <label htmlFor="activeHoursEnd" style={labelStyle}>Active Hours End</label>
-            <input
-              id="activeHoursEnd"
-              type="time"
-              className="form-input"
-              value={prefs.activeHoursEnd}
-              onChange={(e) => update('activeHoursEnd', e.target.value)}
-            />
+        <div style={{ border: '1px solid var(--border-light)', padding: '20px 24px', background: 'var(--bg)' }}>
+          <div
+            style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '24px' }}
+            className="max-[720px]:grid-cols-1"
+          >
+            <div>
+              <label htmlFor="checkIntervalMin" style={labelStyle}>Check Every</label>
+              <select
+                id="checkIntervalMin"
+                className="form-select"
+                value={prefs.checkIntervalMin}
+                onChange={(e) => update('checkIntervalMin', Number(e.target.value))}
+              >
+                {[5, 10, 15, 30, 60].map((n) => (
+                  <option key={n} value={n}>{n} minutes</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="activeHoursStart" style={labelStyle}>Active Hours Start</label>
+              <input
+                id="activeHoursStart"
+                type="time"
+                className="form-input"
+                value={prefs.activeHoursStart}
+                onChange={(e) => update('activeHoursStart', e.target.value)}
+              />
+            </div>
+            <div>
+              <label htmlFor="activeHoursEnd" style={labelStyle}>Active Hours End</label>
+              <input
+                id="activeHoursEnd"
+                type="time"
+                className="form-input"
+                value={prefs.activeHoursEnd}
+                onChange={(e) => update('activeHoursEnd', e.target.value)}
+              />
+            </div>
           </div>
         </div>
 
@@ -208,29 +214,31 @@ export default function PreferencesPage() {
           No notifications will be sent during these hours. Supports midnight-spanning ranges
           (e.g. 22:00 – 07:00).
         </p>
-        <div
-          style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}
-          className="max-[720px]:grid-cols-1"
-        >
-          <div>
-            <label htmlFor="quietHoursStart" style={labelStyle}>Quiet From</label>
-            <input
-              id="quietHoursStart"
-              type="time"
-              className="form-input"
-              value={prefs.quietHoursStart}
-              onChange={(e) => update('quietHoursStart', e.target.value)}
-            />
-          </div>
-          <div>
-            <label htmlFor="quietHoursEnd" style={labelStyle}>Quiet Until</label>
-            <input
-              id="quietHoursEnd"
-              type="time"
-              className="form-input"
-              value={prefs.quietHoursEnd}
-              onChange={(e) => update('quietHoursEnd', e.target.value)}
-            />
+        <div style={{ border: '1px solid var(--border-light)', padding: '20px 24px', background: 'var(--bg)' }}>
+          <div
+            style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}
+            className="max-[720px]:grid-cols-1"
+          >
+            <div>
+              <label htmlFor="quietHoursStart" style={labelStyle}>Quiet From</label>
+              <input
+                id="quietHoursStart"
+                type="time"
+                className="form-input"
+                value={prefs.quietHoursStart}
+                onChange={(e) => update('quietHoursStart', e.target.value)}
+              />
+            </div>
+            <div>
+              <label htmlFor="quietHoursEnd" style={labelStyle}>Quiet Until</label>
+              <input
+                id="quietHoursEnd"
+                type="time"
+                className="form-input"
+                value={prefs.quietHoursEnd}
+                onChange={(e) => update('quietHoursEnd', e.target.value)}
+              />
+            </div>
           </div>
         </div>
 

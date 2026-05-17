@@ -142,7 +142,7 @@ export default function AccountPage() {
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto', padding: '32px 40px 80px' }}>
       {/* Auto-save indicator */}
-      <div style={{ position: 'fixed', top: '16px', right: '24px', zIndex: 100 }}>
+      <div style={{ position: 'fixed', top: '16px', right: '24px', zIndex: 100, backdropFilter: 'blur(8px)' }}>
         {saveStatus === 'saving' && (
           <span style={{ fontSize: '12px', color: 'var(--text-muted)', background: 'var(--bg)', padding: '4px 10px', border: '1px solid var(--border-light)' }}>
             Saving…
