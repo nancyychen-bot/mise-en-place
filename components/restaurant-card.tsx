@@ -316,175 +316,143 @@ export default function RestaurantCard({
             style={{
               fontFamily: 'var(--font-family-serif)', fontWeight: 700, fontSize: '22px',
               letterSpacing: '-0.01em', color: 'var(--text)', background: 'var(--bg-muted)',
-              border: '1px solid var(--border)', padding: '4px 8px', width: '100%',
-              marginBottom: '10px', outline: 'none',
+              border: '1px solid var(--border-light)', borderBottom: '2px solid var(--text)',
+              padding: '8px 10px', width: '100%',
+              marginBottom: '20px', outline: 'none', transition: 'border-color 0.15s',
             }}
           />
-          <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' }}>
-            Party Sizes
-          </p>
-          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '10px' }}>
-            {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-              <button
-                key={n}
-                type="button"
-                onClick={() => toggleEditSize(n)}
-                style={{
-                  width: '30px', height: '30px', fontSize: '12px', fontWeight: 600,
-                  border: '1px solid var(--border)',
-                  background: editSizes.includes(n) ? 'var(--text)' : 'var(--bg)',
-                  color: editSizes.includes(n) ? 'var(--bg)' : 'var(--text)',
-                  cursor: 'pointer', fontFamily: 'var(--font-family-sans)',
-                }}
-              >
-                {n}
-              </button>
-            ))}
-          </div>
-          <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' }}>
-            Time Window <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: '0' }}>(leave blank for global)</span>
-          </p>
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '10px' }}>
-            <input
-              type="time"
-              value={editEarliest}
-              onChange={(e) => setEditEarliest(e.target.value)}
-              style={timeInputStyle}
-            />
-            <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>–</span>
-            <input
-              type="time"
-              value={editLatest}
-              onChange={(e) => setEditLatest(e.target.value)}
-              style={timeInputStyle}
-            />
-            {(editEarliest || editLatest) && (
-              <button
-                type="button"
-                onClick={() => { setEditEarliest(''); setEditLatest(''); }}
-                style={{
-                  fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
-                  padding: '4px 8px', background: 'none', color: 'var(--text-muted)',
-                  border: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'var(--font-family-sans)',
-                }}
-              >
-                Clear
-              </button>
-            )}
-          </div>
-          <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' }}>
-            Date Range <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: '0' }}>(leave blank for global)</span>
-          </p>
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '10px' }}>
-            <input
-              type="date"
-              value={editDateStart}
-              onChange={(e) => setEditDateStart(e.target.value)}
-              style={timeInputStyle}
-            />
-            <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>–</span>
-            <input
-              type="date"
-              value={editDateEnd}
-              onChange={(e) => setEditDateEnd(e.target.value)}
-              style={timeInputStyle}
-            />
-            {(editDateStart || editDateEnd) && (
-              <button
-                type="button"
-                onClick={() => { setEditDateStart(''); setEditDateEnd(''); }}
-                style={{
-                  fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
-                  padding: '4px 8px', background: 'none', color: 'var(--text-muted)',
-                  border: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'var(--font-family-sans)',
-                }}
-              >
-                Clear
-              </button>
-            )}
-          </div>
-          {restaurant.platform !== 'tock' && restaurant.platform !== 'sevenrooms' && (
-            <>
-              <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' }}>
-                Auto-Book
-              </p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+
+          {/* — Basics — */}
+          <div style={{ marginBottom: '18px', paddingBottom: '18px', borderBottom: '1px solid var(--border-hair)' }}>
+            <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>
+              Party Sizes
+            </p>
+            <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
                 <button
+                  key={n}
                   type="button"
-                  onClick={() => {
-                    if (!editAutoBook) {
-                      if (!onValidateAutoBook?.(restaurant.platform)) return;
-                    }
-                    setEditAutoBook(!editAutoBook);
-                  }}
+                  onClick={() => toggleEditSize(n)}
                   style={{
-                    width: '44px', height: '26px', borderRadius: '13px',
-                    border: editAutoBook ? '1px solid var(--tag-green)' : '1px solid var(--border)',
-                    background: editAutoBook ? 'var(--tag-green)' : 'var(--bg)',
-                    cursor: 'pointer', position: 'relative', transition: 'all 0.2s', padding: 0,
+                    width: '32px', height: '32px', fontSize: '12px', fontWeight: 600,
+                    border: editSizes.includes(n) ? '1px solid var(--text)' : '1px solid var(--border-light)',
+                    background: editSizes.includes(n) ? 'var(--text)' : 'var(--bg)',
+                    color: editSizes.includes(n) ? 'var(--bg)' : 'var(--text)',
+                    cursor: 'pointer', fontFamily: 'var(--font-family-sans)',
+                    transition: 'all 0.15s',
                   }}
                 >
-                  <span
-                    style={{
-                      position: 'absolute', width: '18px', height: '18px', borderRadius: '50%',
-                      background: editAutoBook ? 'var(--bg)' : 'var(--text)',
-                      top: '3px', left: editAutoBook ? '22px' : '3px', transition: 'all 0.2s',
-                    }}
-                  />
+                  {n}
                 </button>
-                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                  {editAutoBook ? 'Will auto-book best slot' : 'Notify only'}
-                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* — Time & Date — */}
+          <div style={{ marginBottom: '18px', paddingBottom: '18px', borderBottom: '1px solid var(--border-hair)' }}>
+            <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>
+              Time Window <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: '0' }}>(leave blank for global)</span>
+            </p>
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '14px' }}>
+              <input type="time" value={editEarliest} onChange={(e) => setEditEarliest(e.target.value)} style={timeInputStyle} />
+              <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>–</span>
+              <input type="time" value={editLatest} onChange={(e) => setEditLatest(e.target.value)} style={timeInputStyle} />
+              {(editEarliest || editLatest) && (
+                <button type="button" onClick={() => { setEditEarliest(''); setEditLatest(''); }}
+                  style={{ fontSize: '10px', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'var(--font-family-sans)' }}>
+                  clear
+                </button>
+              )}
+            </div>
+            <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>
+              Date Range <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: '0' }}>(leave blank for global)</span>
+            </p>
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+              <input type="date" value={editDateStart} onChange={(e) => setEditDateStart(e.target.value)} style={timeInputStyle} />
+              <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>–</span>
+              <input type="date" value={editDateEnd} onChange={(e) => setEditDateEnd(e.target.value)} style={timeInputStyle} />
+              {(editDateStart || editDateEnd) && (
+                <button type="button" onClick={() => { setEditDateStart(''); setEditDateEnd(''); }}
+                  style={{ fontSize: '10px', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'var(--font-family-sans)' }}>
+                  clear
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* — Auto-Book & Release — */}
+          {restaurant.platform !== 'tock' && restaurant.platform !== 'sevenrooms' && (
+            <div style={{ marginBottom: '18px', paddingBottom: '18px', borderBottom: '1px solid var(--border-hair)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: editAutoBook ? '14px' : '0' }}>
+                <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                  Auto-Book
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                    {editAutoBook ? 'On' : 'Off'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!editAutoBook) {
+                        if (!onValidateAutoBook?.(restaurant.platform)) return;
+                      }
+                      setEditAutoBook(!editAutoBook);
+                    }}
+                    style={{
+                      width: '40px', height: '22px', borderRadius: '11px',
+                      border: editAutoBook ? '1px solid var(--tag-green)' : '1px solid var(--border-light)',
+                      background: editAutoBook ? 'var(--tag-green)' : 'var(--bg-muted)',
+                      cursor: 'pointer', position: 'relative', transition: 'all 0.2s', padding: 0,
+                    }}
+                  >
+                    <span style={{
+                      position: 'absolute', width: '16px', height: '16px', borderRadius: '50%',
+                      background: editAutoBook ? 'var(--bg)' : 'var(--text-muted)',
+                      top: '2px', left: editAutoBook ? '20px' : '2px', transition: 'all 0.2s',
+                    }} />
+                  </button>
+                </div>
               </div>
               {editAutoBook && (
-                <>
-                  <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' }}>
-                    Preferred Time <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: '0' }}>(books closest match)</span>
-                  </p>
-                  <input
-                    type="time"
-                    value={editPreferredTime}
-                    onChange={(e) => setEditPreferredTime(e.target.value)}
-                    style={{ ...timeInputStyle, marginBottom: '10px' }}
-                  />
-                </>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div>
+                    <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                      Preferred Time
+                    </p>
+                    <input type="time" value={editPreferredTime} onChange={(e) => setEditPreferredTime(e.target.value)} style={timeInputStyle} />
+                  </div>
+                  <div>
+                    <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                      Release
+                    </p>
+                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                      <input type="number" min="1" max="90" value={editReleaseDays} onChange={(e) => setEditReleaseDays(e.target.value)}
+                        placeholder="14" style={{ ...timeInputStyle, width: '48px', textAlign: 'center' as const }} />
+                      <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>d @</span>
+                      <input type="time" value={editReleaseTime} onChange={(e) => setEditReleaseTime(e.target.value)} style={timeInputStyle} />
+                    </div>
+                  </div>
+                </div>
               )}
-              <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' }}>
-                Release Schedule <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: '0' }}>(when new reservations drop)</span>
-              </p>
-              <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '10px' }}>
-                <input
-                  type="number"
-                  min="1"
-                  max="90"
-                  value={editReleaseDays}
-                  onChange={(e) => setEditReleaseDays(e.target.value)}
-                  placeholder="14"
-                  style={{ ...timeInputStyle, width: '60px' }}
-                />
-                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>days ahead at</span>
-                <input
-                  type="time"
-                  value={editReleaseTime}
-                  onChange={(e) => setEditReleaseTime(e.target.value)}
-                  style={timeInputStyle}
-                />
-              </div>
-            </>
+            </div>
           )}
+
+          {/* — Actions — */}
           {saveError && (
-            <p style={{ fontSize: '11px', color: 'var(--tag-red)', fontWeight: 600, marginBottom: '6px' }}>
+            <p style={{ fontSize: '11px', color: 'var(--tag-red)', fontWeight: 600, marginBottom: '8px' }}>
               {saveError}
             </p>
           )}
-          <div style={{ display: 'flex', gap: '6px' }}>
+          <div style={{ display: 'flex', gap: '8px' }}>
             <button
               onClick={handleSave}
               disabled={saving || !editName.trim()}
               style={{
-                fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
-                padding: '5px 12px', background: 'var(--text)', color: 'var(--bg)',
+                fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
+                padding: '8px 20px', background: 'var(--text)', color: 'var(--bg)',
                 border: 'none', cursor: 'pointer', fontFamily: 'var(--font-family-sans)',
+                transition: 'opacity 0.15s', opacity: saving ? 0.6 : 1,
               }}
             >
               {saving ? 'Saving…' : 'Save'}
@@ -492,9 +460,9 @@ export default function RestaurantCard({
             <button
               onClick={() => setEditing(false)}
               style={{
-                fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
-                padding: '5px 12px', background: 'none', color: 'var(--text-secondary)',
-                border: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'var(--font-family-sans)',
+                fontSize: '11px', fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase',
+                padding: '8px 20px', background: 'none', color: 'var(--text-muted)',
+                border: 'none', cursor: 'pointer', fontFamily: 'var(--font-family-sans)',
               }}
             >
               Cancel
