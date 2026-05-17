@@ -104,6 +104,8 @@ export default function RestaurantCard({
   const [editDateEnd, setEditDateEnd] = useState(restaurant.dateEnd ?? '');
   const [editAutoBook, setEditAutoBook] = useState(restaurant.autoBook ?? false);
   const [editPreferredTime, setEditPreferredTime] = useState(restaurant.preferredTime ?? '');
+  const [editReleaseDays, setEditReleaseDays] = useState<string>(String(restaurant.releaseDaysAhead ?? ''));
+  const [editReleaseTime, setEditReleaseTime] = useState(restaurant.releaseTime ?? '');
   const [saving, setSaving] = useState(false);
 
   const hasSlots = slots.length > 0;
@@ -123,6 +125,8 @@ export default function RestaurantCard({
     setEditDateEnd(restaurant.dateEnd ?? '');
     setEditAutoBook(restaurant.autoBook ?? false);
     setEditPreferredTime(restaurant.preferredTime ?? '');
+    setEditReleaseDays(String(restaurant.releaseDaysAhead ?? ''));
+    setEditReleaseTime(restaurant.releaseTime ?? '');
   }
 
   function toggleEditSize(n: number) {
@@ -146,6 +150,8 @@ export default function RestaurantCard({
           dateEnd: editDateEnd || null,
           autoBook: editAutoBook,
           preferredTime: editPreferredTime || null,
+          releaseDaysAhead: editReleaseDays ? parseInt(editReleaseDays) : null,
+          releaseTime: editReleaseTime || null,
         }),
       });
       if (res.ok) {
@@ -159,6 +165,8 @@ export default function RestaurantCard({
           dateEnd: editDateEnd || null,
           autoBook: editAutoBook,
           preferredTime: editPreferredTime || null,
+          releaseDaysAhead: editReleaseDays ? parseInt(editReleaseDays) : null,
+          releaseTime: editReleaseTime || null,
         });
         setEditing(false);
       }
@@ -429,6 +437,27 @@ export default function RestaurantCard({
                   />
                 </>
               )}
+              <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' }}>
+                Release Schedule <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: '0' }}>(when new reservations drop)</span>
+              </p>
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '10px' }}>
+                <input
+                  type="number"
+                  min="1"
+                  max="90"
+                  value={editReleaseDays}
+                  onChange={(e) => setEditReleaseDays(e.target.value)}
+                  placeholder="14"
+                  style={{ ...timeInputStyle, width: '60px' }}
+                />
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>days ahead at</span>
+                <input
+                  type="time"
+                  value={editReleaseTime}
+                  onChange={(e) => setEditReleaseTime(e.target.value)}
+                  style={timeInputStyle}
+                />
+              </div>
             </>
           )}
           <div style={{ display: 'flex', gap: '6px' }}>
@@ -485,6 +514,11 @@ export default function RestaurantCard({
           {restaurant.autoBook && (
             <p style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.04em', color: 'var(--tag-green)', marginBottom: '12px', marginTop: '-4px' }}>
               Auto-book · {restaurant.preferredTime ? fmt12h(restaurant.preferredTime) : 'earliest'}
+            </p>
+          )}
+          {restaurant.releaseDaysAhead && restaurant.releaseTime && (
+            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '12px', marginTop: '-4px' }}>
+              Releases {restaurant.releaseDaysAhead}d ahead at {fmt12h(restaurant.releaseTime)}
             </p>
           )}
         </>
