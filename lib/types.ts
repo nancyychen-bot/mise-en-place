@@ -28,8 +28,6 @@ export interface UserSettings {
   opentableSession: string | null;
   sevenroomsAuthToken: string | null;
   tokenExpired: Record<string, boolean>;
-  phoneNumber: string | null;
-  stripePaymentMethod: string | null;
 }
 
 export interface Restaurant {

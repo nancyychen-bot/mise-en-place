@@ -1,0 +1,57 @@
+name: OpenTable Snipe
+
+on:
+  # 8:55 AM EDT = 12:55 UTC on May 28, 2026
+  schedule:
+    - cron: '55 12 28 5 *'
+  workflow_dispatch:
+    inputs:
+      rid:
+        description: 'Restaurant ID'
+        default: '220387'
+      date:
+        description: 'Target date (YYYY-MM-DD)'
+        default: '2026-06-11'
+      time:
+        description: 'Target time (HH:MM)'
+        default: '18:30'
+      party:
+        description: 'Party size'
+        default: '3'
+
+concurrency:
+  group: opentable-snipe
+  cancel-in-progress: false
+
+jobs:
+  snipe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: scripts/opentable-checker/package-lock.json
+
+      - name: Install dependencies
+        working-directory: scripts/opentable-checker
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: scripts/opentable-checker
+        run: npx playwright install chromium --with-deps
+
+      - name: Run snipe
+        working-directory: scripts/opentable-checker
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          RID="${{ github.event.inputs.rid || '220387' }}"
+          DATE="${{ github.event.inputs.date || '2026-06-11' }}"
+          TIME="${{ github.event.inputs.time || '18:30' }}"
+          PARTY="${{ github.event.inputs.party || '3' }}"
+          xvfb-run --auto-servernum node snipe.js --rid=$RID --date=$DATE --time=$TIME --party=$PARTY --interval=15 --duration=10

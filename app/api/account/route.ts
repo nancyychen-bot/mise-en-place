@@ -17,7 +17,7 @@ export async function GET() {
 
   const { data: settings } = await db
     .from('user_settings')
-    .select('ntfy_topic, ntfy_priority, monitoring_enabled, timezone, resy_api_key, resy_auth_token, opentable_session, sevenrooms_auth_token, token_expired, phone_number, stripe_payment_method, stripe_card_last4')
+    .select('ntfy_topic, ntfy_priority, monitoring_enabled, timezone, resy_api_key, resy_auth_token, opentable_session, sevenrooms_auth_token, token_expired')
     .eq('user_id', user.id)
     .single();
 
@@ -33,9 +33,6 @@ export async function GET() {
     opentableSession: settings?.opentable_session ? '••••••' : null,
     sevenroomsAuthToken: settings?.sevenrooms_auth_token ? '••••••' : null,
     tokenExpired: settings?.token_expired ?? {},
-    phoneNumber: settings?.phone_number ?? null,
-    stripePaymentMethod: settings?.stripe_payment_method ? '••••••' : null,
-    stripeCardLast4: settings?.stripe_card_last4 ?? null,
   });
 }
 
@@ -50,9 +47,6 @@ const PatchSchema = z.object({
   resyAuthToken: z.string().max(500).optional(),
   opentableSession: z.string().max(500).optional(),
   sevenroomsAuthToken: z.string().max(500).optional(),
-  phoneNumber: z.string().max(20).optional(),
-  stripePaymentMethod: z.string().max(200).optional(),
-  stripeCardLast4: z.string().max(4).optional(),
 });
 
 export async function PATCH(req: NextRequest) {
@@ -99,9 +93,6 @@ export async function PATCH(req: NextRequest) {
   if (d.monitoringEnabled !== undefined) settingsUpdate.monitoring_enabled = d.monitoringEnabled;
   if (d.timezone !== undefined) settingsUpdate.timezone = d.timezone;
   if (d.resyApiKey !== undefined) settingsUpdate.resy_api_key = d.resyApiKey || null;
-  if (d.phoneNumber !== undefined) settingsUpdate.phone_number = d.phoneNumber || null;
-  if (d.stripePaymentMethod !== undefined) settingsUpdate.stripe_payment_method = d.stripePaymentMethod || null;
-  if (d.stripeCardLast4 !== undefined) settingsUpdate.stripe_card_last4 = d.stripeCardLast4 || null;
 
   if (d.resyAuthToken !== undefined || d.opentableSession !== undefined || d.sevenroomsAuthToken !== undefined) {
     const { data: current } = await db

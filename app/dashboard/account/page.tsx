@@ -20,9 +20,6 @@ interface AccountData {
   opentableSession: string | null;
   sevenroomsAuthToken: string | null;
   tokenExpired: Record<string, boolean>;
-  phoneNumber: string | null;
-  stripePaymentMethod: string | null;
-  stripeCardLast4: string | null;
 }
 
 const sectionStyle: React.CSSProperties = {
@@ -51,86 +48,14 @@ export default function AccountPage() {
     opentableSession: null,
     sevenroomsAuthToken: null,
     tokenExpired: {},
-    phoneNumber: null,
-    stripePaymentMethod: null,
-    stripeCardLast4: null,
   });
 
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState('');
   const [error, setError] = useState('');
-  const [cardStatus, setCardStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [cardError, setCardError] = useState('');
-  const cardRef = useRef<HTMLDivElement>(null);
-  const stripeRef = useRef<unknown>(null);
-  const cardElementRef = useRef<unknown>(null);
   const loaded = useRef(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const initStripe = useCallback(() => {
-    if (stripeRef.current || !cardRef.current) return;
-    const win = window as unknown as Record<string, unknown>;
-    if (!win.Stripe) return;
-    const stripe = (win.Stripe as (key: string) => unknown)('pk_live_pwFpy4O0zwfBdzO3hvDvufk3');
-    stripeRef.current = stripe;
-    const elements = (stripe as { elements: () => { create: (type: string, opts: unknown) => unknown } }).elements();
-    const card = elements.create('card', {
-      style: {
-        base: { fontSize: '14px', color: '#1a1a1a', fontFamily: 'var(--font-family-sans)', '::placeholder': { color: '#999' } },
-      },
-    });
-    (card as { mount: (el: HTMLElement) => void }).mount(cardRef.current);
-    cardElementRef.current = card;
-  }, []);
-
-  useEffect(() => {
-    if (document.querySelector('script[src*="stripe.com"]')) {
-      initStripe();
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = 'https://js.stripe.com/v3/';
-    script.async = true;
-    script.onload = () => initStripe();
-    document.head.appendChild(script);
-  }, [initStripe]);
-
-  async function handleSaveCard() {
-    const stripe = stripeRef.current as { createPaymentMethod: (opts: unknown) => Promise<{ paymentMethod?: { id: string; card?: { last4: string } }; error?: { message: string } }> } | null;
-    const cardElement = cardElementRef.current;
-    if (!stripe || !cardElement) { setCardError('Card form not loaded'); return; }
-    setCardStatus('saving');
-    setCardError('');
-    const { paymentMethod, error: stripeError } = await stripe.createPaymentMethod({
-      type: 'card',
-      card: cardElement,
-    });
-    if (stripeError) {
-      setCardError(stripeError.message ?? 'Card error');
-      setCardStatus('error');
-      return;
-    }
-    if (!paymentMethod?.id) {
-      setCardError('No payment method returned');
-      setCardStatus('error');
-      return;
-    }
-    const last4 = paymentMethod.card?.last4 ?? '';
-    const res = await fetch('/api/account', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ stripePaymentMethod: paymentMethod.id, stripeCardLast4: last4 }),
-    });
-    if (!res.ok) {
-      setCardError('Failed to save');
-      setCardStatus('error');
-      return;
-    }
-    setData((d) => ({ ...d, stripePaymentMethod: '••••••', stripeCardLast4: last4 }));
-    setCardStatus('saved');
-    setTimeout(() => setCardStatus('idle'), 3000);
-  }
 
   useEffect(() => {
     fetch('/api/account')
@@ -156,7 +81,6 @@ export default function AccountPage() {
       resyAuthToken: current.resyAuthToken && current.resyAuthToken !== '••••••' ? current.resyAuthToken : undefined,
       opentableSession: current.opentableSession && current.opentableSession !== '••••••' ? current.opentableSession : undefined,
       sevenroomsAuthToken: current.sevenroomsAuthToken && current.sevenroomsAuthToken !== '••••••' ? current.sevenroomsAuthToken : undefined,
-      phoneNumber: current.phoneNumber ?? undefined,
     };
     try {
       const res = await fetch('/api/account', {
@@ -353,16 +277,6 @@ export default function AccountPage() {
           <Link href="/dashboard/setup" style={{ textDecoration: 'underline' }}>Setup Guide</Link>{' '}
           for instructions.
         </p>
-        <FieldRow label="Phone Number" description="Required for OpenTable auto-booking">
-          <input
-            type="tel"
-            style={inputStyle}
-            value={data.phoneNumber ?? ''}
-            onChange={(e) => setData((d) => ({ ...d, phoneNumber: e.target.value || null }))}
-            placeholder="e.g. 2125551234"
-            autoComplete="tel"
-          />
-        </FieldRow>
         {(['resy', 'opentable'] as const).map((platform) => {
           const fieldMap = { resy: 'resyAuthToken', opentable: 'opentableSession' } as const;
           const labelMap = { resy: 'Resy', opentable: 'OpenTable' } as const;
@@ -388,31 +302,6 @@ export default function AccountPage() {
             </FieldRow>
           );
         })}
-        <FieldRow
-          label="Credit Card"
-          description={data.stripePaymentMethod ? 'Card saved for auto-booking' : 'Required for OpenTable restaurants with card holds'}
-        >
-          {data.stripeCardLast4 && (
-            <p style={{ fontSize: '14px', color: 'var(--text)', fontFamily: 'var(--font-family-mono)', marginBottom: '8px' }}>
-              •••• •••• •••• {data.stripeCardLast4}
-            </p>
-          )}
-          <div
-            ref={cardRef}
-            style={{
-              padding: '10px 12px',
-              border: '1px solid var(--border-light)',
-              background: 'var(--bg)',
-              minHeight: '20px',
-            }}
-          />
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '8px' }}>
-            <BtnSecondary small type="button" onClick={handleSaveCard} disabled={cardStatus === 'saving'}>
-              {cardStatus === 'saving' ? 'Saving…' : cardStatus === 'saved' ? '✓ Saved' : data.stripePaymentMethod ? 'Update Card' : 'Save Card'}
-            </BtnSecondary>
-            {cardError && <span style={{ fontSize: '12px', color: 'var(--tag-red)' }}>{cardError}</span>}
-          </div>
-        </FieldRow>
       </div>
 
       {error && (

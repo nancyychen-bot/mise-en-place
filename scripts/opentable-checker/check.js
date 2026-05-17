@@ -315,7 +315,7 @@ async function main() {
     if (restaurant.auto_book && allSlots.length > 0) {
       const { data: userSettings } = await db
         .from('user_settings')
-        .select('opentable_session, token_expired, ntfy_topic, phone_number, stripe_payment_method')
+        .select('opentable_session, token_expired, ntfy_topic')
         .eq('user_id', restaurant.user_id)
         .single();
 
