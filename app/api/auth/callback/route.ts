@@ -15,10 +15,13 @@ export async function GET(req: NextRequest) {
     if (!error) {
       return NextResponse.redirect(new URL(next, origin));
     }
+    console.error('[auth/callback] code exchange failed:', error.message);
+    return NextResponse.redirect(
+      new URL(`/forgot-password?error=${encodeURIComponent(error.message)}`, origin)
+    );
   }
 
-  // Something went wrong — send back to sign-in with an error hint
   return NextResponse.redirect(
-    new URL('/signin?error=link-expired', origin)
+    new URL('/forgot-password?error=Invalid+or+expired+link.+Please+request+a+new+one.', origin)
   );
 }
