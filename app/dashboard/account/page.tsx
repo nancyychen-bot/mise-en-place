@@ -113,13 +113,16 @@ export default function AccountPage() {
       setCardStatus('error');
       return;
     }
+    console.log('[card] saving PM:', paymentMethod.id);
     const res = await fetch('/api/account', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ stripePaymentMethod: paymentMethod.id }),
     });
+    const resBody = await res.text();
+    console.log('[card] PATCH response:', res.status, resBody);
     if (!res.ok) {
-      setCardError('Failed to save');
+      setCardError(`Failed to save: ${resBody}`);
       setCardStatus('error');
       return;
     }
