@@ -1,0 +1,59 @@
+name: Resy Snipe
+
+on:
+  workflow_dispatch:
+    inputs:
+      venue:
+        description: 'Venue ID'
+        required: true
+      date:
+        description: 'Target date (YYYY-MM-DD)'
+        required: true
+      time:
+        description: 'Target time (HH:MM)'
+        required: true
+      party:
+        description: 'Party size'
+        default: '2'
+      city:
+        description: 'City slug (ny, chi, la, sf)'
+        default: 'ny'
+
+concurrency:
+  group: resy-snipe
+  cancel-in-progress: false
+
+jobs:
+  snipe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: scripts/resy-checker/package-lock.json
+
+      - name: Install dependencies
+        working-directory: scripts/resy-checker
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: scripts/resy-checker
+        run: npx playwright install chromium --with-deps
+
+      - name: Run snipe
+        working-directory: scripts/resy-checker
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESY_API_KEY: ${{ secrets.RESY_API_KEY }}
+        run: |
+          VENUE="${{ github.event.inputs.venue }}"
+          DATE="${{ github.event.inputs.date }}"
+          TIME="${{ github.event.inputs.time }}"
+          PARTY="${{ github.event.inputs.party || '2' }}"
+          CITY="${{ github.event.inputs.city || 'ny' }}"
+          xvfb-run --auto-servernum node snipe.js --venue=$VENUE --date=$DATE --time=$TIME --party=$PARTY --city=$CITY --interval=10 --duration=10
