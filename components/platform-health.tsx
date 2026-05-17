@@ -13,10 +13,9 @@ const PLATFORM_LABELS: Record<Platform, string> = {
   resy: 'Resy',
   opentable: 'OpenTable',
   sevenrooms: 'SevenRooms',
-  tock: 'Tock',
 };
 
-const ALL_PLATFORMS: Platform[] = ['resy', 'opentable', 'sevenrooms', 'tock'];
+const ALL_PLATFORMS: Platform[] = ['resy', 'opentable', 'sevenrooms'];
 
 function dotColor(status: string): string {
   if (status === 'ok') return 'var(--tag-green)';

@@ -39,9 +39,9 @@ function getBookingUrl(restaurant: Restaurant, slot?: Slot): string {
       ? `${base}?date=${slot.date}&party_size=${primarySize}`
       : base;
   } else {
-    const base = `https://www.exploretock.com/${slug}`;
+    const base = `https://www.sevenrooms.com/reservations/${slug}`;
     return slot
-      ? `${base}?date=${slot.date}&size=${primarySize}&time=${slot.time}`
+      ? `${base}?date=${slot.date}&party_size=${primarySize}`
       : base;
   }
 }
@@ -381,7 +381,7 @@ export default function RestaurantCard({
           </div>
 
           {/* — Auto-Book & Release — */}
-          {restaurant.platform !== 'tock' && restaurant.platform !== 'sevenrooms' && (
+          {restaurant.platform !== 'sevenrooms' && (
             <div style={{ marginBottom: '18px', paddingBottom: '18px', borderBottom: '1px solid var(--border-hair)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: editAutoBook ? '14px' : '0' }}>
                 <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>

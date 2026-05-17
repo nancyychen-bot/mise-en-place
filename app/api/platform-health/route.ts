@@ -3,7 +3,7 @@ import { requireUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import type { Platform } from '@/lib/types';
 
-const ALL_PLATFORMS: Platform[] = ['resy', 'opentable', 'sevenrooms', 'tock'];
+const ALL_PLATFORMS: Platform[] = ['resy', 'opentable', 'sevenrooms'];
 
 interface PlatformStatus {
   status: 'ok' | 'warning' | 'error' | 'idle';

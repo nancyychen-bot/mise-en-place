@@ -157,7 +157,7 @@ export default function AddRestaurantForm({ onAdd, onCheckNow, checking, checkMs
             Add a Restaurant
           </p>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '24px' }}>
-            Paste a Resy, OpenTable, SevenRooms, or Tock URL and we&apos;ll extract the venue automatically.
+            Paste a Resy, OpenTable, or SevenRooms URL and we&apos;ll extract the venue automatically.
           </p>
 
           <form onSubmit={handleSubmit}>
@@ -200,7 +200,6 @@ export default function AddRestaurantForm({ onAdd, onCheckNow, checking, checkMs
                   <option value="resy">Resy</option>
                   <option value="opentable">OpenTable</option>
                   <option value="sevenrooms">SevenRooms</option>
-                  <option value="tock">Tock</option>
                 </select>
               </div>
 
@@ -220,8 +219,6 @@ export default function AddRestaurantForm({ onAdd, onCheckNow, checking, checkMs
                       ? 'Numeric RID (e.g. 55048)'
                       : platform === 'sevenrooms'
                       ? 'sevenrooms.com/reservations/… or slug'
-                      : platform === 'tock'
-                      ? 'exploretock.com/… or slug'
                       : 'resy.com/cities/ny/… or venue ID'
                   }
                 />
@@ -230,8 +227,6 @@ export default function AddRestaurantForm({ onAdd, onCheckNow, checking, checkMs
                     ? <>Due to OpenTable&apos;s system, you have to enter the numeric ID directly. To find it: open the restaurant page, right-click and open &ldquo;View Page Source&rdquo;, then CTRL-F search for &ldquo;rid&rdquo; and copy and paste that numeric ID. I know it&apos;s annoying, but blame OpenTable!</>
                     : platform === 'sevenrooms'
                     ? <>Paste the full SevenRooms URL &mdash; we&apos;ll extract the venue slug automatically.</>
-                    : platform === 'tock'
-                    ? <>Paste the full Tock URL &mdash; we&apos;ll extract the venue slug automatically.</>
                     : <>Paste the full URL &mdash; we&apos;ll extract the ID automatically.</>}
                 </p>
               </div>

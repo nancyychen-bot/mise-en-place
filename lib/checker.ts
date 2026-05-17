@@ -1,6 +1,5 @@
 import { db } from './db';
 import { findSevenRoomsAvailability } from './sevenrooms';
-import { findTockAvailability } from './tock';
 import { sendNotification } from './ntfy';
 import {
   isSlotInWindow,
@@ -102,10 +101,6 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
                     slots = await withTimeout(findSevenRoomsAvailability(
                       restaurant.venue_id, date, size
                     ));
-                  } else if (restaurant.platform === 'tock') {
-                    slots = await withTimeout(findTockAvailability(
-                      restaurant.venue_id, date, effectiveEarliest, size
-                    ));
                   }
                 } catch (err) {
                   if (!fetchError) fetchError = `${date}/${size}: ${err instanceof Error ? err.message : String(err)}`;
@@ -183,7 +178,7 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
             ? `https://www.opentable.com/r/${slug}?covers=${primarySize}&dateTime=${firstSlot.date}T${firstSlot.time}:00`
             : restaurant.platform === 'sevenrooms'
             ? `https://www.sevenrooms.com/reservations/${slug}?date=${firstSlot.date}&party_size=${primarySize}`
-            : `https://www.exploretock.com/${slug}?date=${firstSlot.date}&size=${primarySize}&time=${firstSlot.time}`;
+            : `https://www.sevenrooms.com/reservations/${slug}?date=${firstSlot.date}&party_size=${primarySize}`;
 
           await Promise.all([
             db.from('activity_log').insert({ user_id: userId, restaurant_id: restaurant.id, type: 'found', message: foundMsg }),
@@ -217,7 +212,7 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
   return results;
 }
 
-type PlatformHealthMap = Partial<Record<'resy' | 'opentable' | 'sevenrooms' | 'tock', 'ok' | 'error'>>;
+type PlatformHealthMap = Partial<Record<'resy' | 'opentable' | 'sevenrooms', 'ok' | 'error'>>;
 
 async function detectPlatformTransitions(
   userId: string,

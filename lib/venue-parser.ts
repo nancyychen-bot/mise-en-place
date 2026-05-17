@@ -1,5 +1,4 @@
 export { parseSevenRoomsVenueInput } from './sevenrooms';
-export { parseTockVenueInput } from './tock';
 
 /**
  * Extracts a Resy venue slug from a pasted URL or raw slug.

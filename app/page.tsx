@@ -118,7 +118,7 @@ export default async function LandingPage() {
             marginBottom: '48px',
           }}
         >
-          Monitor restaurants with impossible reservations. Check any time and get free push notifications the moment a table opens up. Works with Resy, Opentable, SevenRooms and Tock.
+          Monitor restaurants with impossible reservations. Check any time and get free push notifications the moment a table opens up. Works with Resy, OpenTable, and SevenRooms.
         </p>
 
         <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'center' }}>
