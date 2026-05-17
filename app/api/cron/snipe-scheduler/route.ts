@@ -25,7 +25,7 @@ export async function GET() {
   const triggered: string[] = [];
 
   for (const r of restaurants) {
-    if (r.platform !== 'opentable' && r.platform !== 'resy') continue;
+    if (r.platform !== 'opentable') continue;
 
     const [rh, rm] = (r.release_time as string).split(':').map(Number);
     const releaseMinutes = rh * 60 + rm;

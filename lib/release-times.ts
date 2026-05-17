@@ -16,7 +16,7 @@ const KNOWN_RELEASES: Record<string, ReleaseInfo> = {
   'bong': { daysAhead: 21, time: '09:00' },
   'semma': { daysAhead: 7, time: '09:00' },
   'estela': { daysAhead: 14, time: '09:00' },
-  'red hook tavern': { daysAhead: 14, time: '09:00' },
+  'red hook tavern': { daysAhead: 13, time: '00:00' },
   'minetta tavern': { daysAhead: 14, time: '10:00' },
   'cote': { daysAhead: 30, time: '10:00' },
   'four horseman': { daysAhead: 14, time: '09:00' },
