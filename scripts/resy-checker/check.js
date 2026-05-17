@@ -85,7 +85,26 @@ async function warmUpImperva() {
   const page = await context.newPage();
   await page.goto('https://resy.com', { waitUntil: 'domcontentloaded', timeout: 30000 });
   try { await page.waitForLoadState('networkidle', { timeout: 15000 }); } catch {}
-  await sleep(2000);
+  await sleep(1500);
+
+  // Simulate human browsing: mouse movements, scroll, click a search box
+  await page.mouse.move(400 + Math.random() * 200, 300 + Math.random() * 100);
+  await sleep(300 + Math.random() * 200);
+  await page.mouse.move(600 + Math.random() * 100, 200 + Math.random() * 100);
+  await sleep(200 + Math.random() * 300);
+  await page.evaluate(() => window.scrollBy(0, 150 + Math.random() * 200));
+  await sleep(500 + Math.random() * 500);
+  await page.evaluate(() => window.scrollBy(0, -(100 + Math.random() * 100)));
+  await sleep(400 + Math.random() * 300);
+
+  // Try clicking the search box like a real user would
+  const searchBox = page.locator('input[placeholder*="Search"], input[type="search"], [data-test*="search"]').first();
+  if (await searchBox.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await searchBox.click();
+    await sleep(300 + Math.random() * 200);
+  }
+
+  await sleep(1000);
   console.log('[resy-check] browser warmed up on resy.com');
 
   await page.setExtraHTTPHeaders({
