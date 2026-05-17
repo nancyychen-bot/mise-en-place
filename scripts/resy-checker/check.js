@@ -445,7 +445,7 @@ async function main() {
             }
           }
         }
-        await sleep(800 + Math.random() * 400);
+        await sleep(2000 + Math.random() * 1000);
       }
     }
 
