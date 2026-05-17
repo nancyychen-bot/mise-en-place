@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { parseResyVenueInput, parseOpenTableVenueInput, parseSevenRoomsVenueInput, parseTockVenueInput } from '@/lib/venue-parser';
 import { resolveResyVenueId } from '@/lib/resy';
 import { resolveOpenTableVenueId } from '@/lib/opentable';
+import { lookupReleaseTime } from '@/lib/release-times';
 
 export async function GET() {
   const user = await requireUser().catch(() => null);
@@ -109,6 +110,14 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  const release = lookupReleaseTime(name);
+  if (release) {
+    await db.from('restaurants').update({
+      release_days_ahead: release.daysAhead,
+      release_time: release.time,
+    }).eq('id', restaurant.id);
+  }
 
   // Log system event
   await db.from('activity_log').insert({
