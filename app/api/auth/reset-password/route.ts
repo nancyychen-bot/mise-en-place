@@ -29,7 +29,10 @@ export async function POST(req: NextRequest) {
   const { error } = await supabase.auth.updateUser({ password });
 
   if (error) {
-    return NextResponse.json({ error: 'Failed to update password' }, { status: 400 });
+    const msg = error.message?.toLowerCase().includes('same')
+      ? 'New password must be different from your current password'
+      : error.message ?? 'Failed to update password';
+    return NextResponse.json({ error: msg }, { status: 400 });
   }
 
   return NextResponse.json({ ok: true });
