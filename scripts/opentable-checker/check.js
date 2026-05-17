@@ -93,135 +93,100 @@ async function handleAuthExpired(userId, platform) {
   });
 }
 
-const OT_GQL_HASH = 'eba0408aa4a01f509f1f0697c855b9154736a7ac872c7ba98119d4f61dc8ba47';
-
-async function bookOpenTableSlot(page, restaurant, slot, userInfo, stripePaymentMethod) {
+async function bookOpenTableSlot(page, restaurant, slot) {
   const rid = restaurant.venue_id;
   const partySize = restaurant.party_sizes?.[0] ?? restaurant.party_size;
+  const timeParam = encodeURIComponent(`${slot.time}:00`);
 
-  // Step 1: Extract CSRF token from the page
-  const csrfToken = await page.evaluate(() => window.__CSRF_TOKEN__);
-  if (!csrfToken) {
-    return { success: false, error: 'no_csrf_token' };
-  }
-  console.log(`[check] got CSRF token`);
+  // Step 1: Navigate to the availability page at the slot's time
+  const availUrl = `https://www.opentable.com/booking/restref/availability?rid=${rid}&restRef=${rid}&partySize=${partySize}&date=${slot.date}&time=${timeParam}&lang=en-US`;
+  console.log(`[check] navigating to booking page`);
+  await page.goto(availUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await page.waitForTimeout(4000);
 
-  // Step 2: Get slot tokens via GQL (same endpoint the page uses)
-  const gqlRes = await page.evaluate(
-    async ({ rid, date, time, partySize, csrfToken, hash }) => {
-      const res = await fetch('https://www.opentable.com/dapi/fe/gql?optype=query&opname=RestRefAvailability', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
-        body: JSON.stringify({
-          operationName: 'RestRefAvailability',
-          variables: {
-            restaurantIds: [Number(rid)],
-            date, time, partySize,
-            databaseRegion: 'NA',
-            forwardDays: 0, forwardTimeslots: 2, backwardTimeslots: 2,
-            forwardMinutes: 60, backwardMinutes: 60,
-            requireTypes: ['Standard'],
-            enableTicketedExperiences: true,
-            enablePrivateDiningExperiences: false,
-            privilegedAccess: [], transformOutdoorToDefault: false,
-            slotDiscovery: ['off'], useCBR: true,
-            rid: Number(rid),
-          },
-          extensions: { persistedQuery: { version: 1, sha256Hash: hash } },
-        }),
-      });
-      return { status: res.status, body: await res.text() };
-    },
-    { rid, date: slot.date, time: slot.time, partySize, csrfToken, hash: OT_GQL_HASH }
-  );
-
-  if (gqlRes.status !== 200) {
-    return { success: false, error: `gql_http_${gqlRes.status}: ${gqlRes.body.slice(0, 200)}` };
+  // Step 2: Click "Find a table"
+  const findBtn = page.locator('[data-test="dtpPicker-submit"]');
+  if (await findBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await findBtn.click();
+    await page.waitForTimeout(5000);
   }
 
-  // Find the slot with timeOffsetMinutes=0 (exact match for requested time)
-  let slotHash = null;
-  let slotAvailabilityToken = null;
-  try {
-    const data = JSON.parse(gqlRes.body);
-    const avail = data?.data?.availability;
-    if (Array.isArray(avail)) {
-      for (const r of avail) {
-        if (r?.restaurantId !== Number(rid)) continue;
-        for (const day of r?.availabilityDays ?? []) {
-          if (day.dayOffset !== 0) continue;
-          for (const s of day?.slots ?? []) {
-            if (!s.isAvailable || !s.slotHash) continue;
-            if (s.timeOffsetMinutes === 0) {
-              slotHash = s.slotHash;
-              slotAvailabilityToken = s.slotAvailabilityToken;
-              break;
-            }
-          }
-        }
-        if (slotHash) break;
+  // Step 3: Find and click the matching time slot button
+  const slotBtn = page.locator(`button[aria-label*="Reserve table"][aria-label*="${slot.displayTime}"][aria-label*="${slot.date.split('-').slice(1).join('/')}"]`).first();
+  let clicked = false;
+  if (await slotBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await slotBtn.click();
+    clicked = true;
+  } else {
+    // Fallback: find by text
+    const allBtns = await page.locator('button').all();
+    for (const btn of allBtns) {
+      const label = await btn.getAttribute('aria-label').catch(() => '') ?? '';
+      const text = await btn.textContent().catch(() => '') ?? '';
+      if ((label.includes(slot.displayTime) || text.includes(slot.displayTime)) && label.includes('Reserve')) {
+        await btn.click();
+        clicked = true;
+        break;
       }
     }
-  } catch {}
-
-  if (!slotHash) {
-    return { success: false, error: `no_slot_hash_in_gql` };
   }
-  console.log(`[check] got slot tokens: hash=${slotHash}`);
 
-  // Step 3: Book via make-reservation API
-  const bookRes = await page.evaluate(
-    async ({ rid, dateTime, partySize, slotHash, slotAvailabilityToken, csrfToken, userInfo, paymentMethod }) => {
-      const body = {
-        restaurantId: Number(rid),
-        slotAvailabilityToken,
-        slotHash,
-        isModify: false,
-        reservationDateTime: dateTime,
-        partySize,
-        firstName: userInfo.firstName,
-        lastName: userInfo.lastName,
-        email: userInfo.email,
-        phoneNumber: userInfo.phone || '',
-        phoneNumberCountryId: 'US',
-        country: 'US',
-        reservationType: 'Standard',
-        reservationAttribute: 'default',
-        diningAreaId: 1,
-        pointsType: 'Standard',
-        points: 100,
-        optInEmailRestaurant: false,
-      };
-      if (paymentMethod) body.creditCard = { token: paymentMethod };
-      const res = await fetch('https://www.opentable.com/dapi/booking/make-reservation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
-        body: JSON.stringify(body),
-      });
-      return { status: res.status, body: await res.text() };
-    },
-    {
-      rid, dateTime: `${slot.date}T${slot.time}`, partySize,
-      slotHash, slotAvailabilityToken, csrfToken, userInfo,
-      paymentMethod: stripePaymentMethod,
+  if (!clicked) {
+    return { success: false, error: `no_slot_button_for_${slot.displayTime}` };
+  }
+  await page.waitForTimeout(2000);
+
+  // Step 4: Select "Standard" seating if prompted
+  const standardBtn = page.locator('button:has-text("Standard")');
+  if (await standardBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await standardBtn.click();
+    await page.waitForTimeout(5000);
+  } else {
+    await page.waitForTimeout(3000);
+  }
+
+  // Step 5: Verify we're on the details page
+  const pageUrl = page.url();
+  if (!pageUrl.includes('details')) {
+    return { success: false, error: `not_on_details_page: ${pageUrl.slice(0, 100)}` };
+  }
+  console.log(`[check] on booking details page, slot held`);
+
+  // Step 6: Intercept the make-reservation request to capture the result
+  let bookingResult = null;
+  page.on('response', async (response) => {
+    if (response.url().includes('make-reservation')) {
+      try {
+        bookingResult = { status: response.status(), body: await response.text() };
+      } catch {}
     }
-  );
+  });
 
-  console.log(`[check] make-reservation: status=${bookRes.status}, body=${bookRes.body.slice(0, 300)}`);
+  // Step 7: Click "Complete reservation" — the form auto-fills saved card for logged-in users
+  const completeBtn = page.locator('button:has-text("Complete reservation")');
+  if (!await completeBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+    return { success: false, error: 'no_complete_button' };
+  }
+  console.log(`[check] clicking Complete reservation`);
+  await completeBtn.click();
+  await page.waitForTimeout(8000);
 
-  if (bookRes.status === 401 || bookRes.status === 403) {
-    return { success: false, error: 'auth_expired', authExpired: true };
+  // Step 8: Check result
+  if (bookingResult) {
+    console.log(`[check] make-reservation: status=${bookingResult.status}`);
+    if (bookingResult.status >= 200 && bookingResult.status < 300) {
+      return { success: true, confirmationId: 'confirmed' };
+    }
+    return { success: false, error: `book_http_${bookingResult.status}: ${bookingResult.body?.slice(0, 300) ?? ''}` };
   }
 
-  let bookData;
-  try { bookData = JSON.parse(bookRes.body); } catch {}
-
-  if (bookRes.status >= 400) {
-    return { success: false, error: `book_http_${bookRes.status}: ${bookRes.body.slice(0, 300)}` };
+  // Fallback: check if page shows confirmation
+  const bodyText = await page.evaluate(() => document.body.innerText.slice(0, 1000));
+  if (/confirmed|reservation.*complete|you're all set/i.test(bodyText)) {
+    return { success: true, confirmationId: 'confirmed' };
   }
 
-  const confirmationNumber = bookData?.confirmationNumber ?? bookData?.reservation?.confirmationNumber ?? 'confirmed';
-  return { success: true, confirmationId: String(confirmationNumber) };
+  return { success: false, error: `unknown_state: ${bodyText.slice(0, 200)}` };
 }
 
 // ── Main ────────────────────────────────────────────────────────────
@@ -359,30 +324,16 @@ async function main() {
         if (best) {
           console.log(`[check] best slot for ${restaurant.name}: ${best.displayTime} on ${best.date}`);
           try {
-            const { data: userProfile } = await db
-              .from('users')
-              .select('email, display_name')
-              .eq('id', restaurant.user_id)
-              .single();
-            const nameParts = (userProfile?.display_name ?? '').split(' ');
-            const userInfo = {
-              firstName: nameParts[0] || 'Guest',
-              lastName: nameParts.slice(1).join(' ') || '',
-              email: userProfile?.email || '',
-              phone: userSettings.phone_number || '',
-            };
-
             const ctx = await launchBrowser();
             await ctx.addCookies([{
               name: 'authCke',
               value: userSettings.opentable_session,
               domain: '.opentable.com',
               path: '/',
+              secure: true,
             }]);
             const bookingPage = await ctx.newPage();
-            await bookingPage.goto('https://www.opentable.com', { waitUntil: 'domcontentloaded', timeout: 30000 });
-            await bookingPage.waitForTimeout(2000);
-            const result = await bookOpenTableSlot(bookingPage, restaurant, best, userInfo, userSettings.stripe_payment_method);
+            const result = await bookOpenTableSlot(bookingPage, restaurant, best);
             await bookingPage.close().catch(() => {});
             if (result.success) {
               console.log(`[check] AUTO-BOOKED ${restaurant.name} at ${best.displayTime} on ${best.date} (${result.confirmationId})`);
