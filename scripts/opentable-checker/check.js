@@ -192,7 +192,7 @@ async function bookOpenTableSlot(page, restaurant, slot, userInfo, stripePayment
         points: 100,
         optInEmailRestaurant: false,
       };
-      if (paymentMethod) body.paymentMethod = paymentMethod;
+      if (paymentMethod) body.creditCard = { token: paymentMethod };
       const res = await fetch('https://www.opentable.com/dapi/booking/make-reservation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
