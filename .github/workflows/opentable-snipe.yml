@@ -26,7 +26,7 @@ concurrency:
 jobs:
   snipe:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -54,4 +54,4 @@ jobs:
           DATE="${{ github.event.inputs.date || '2026-06-11' }}"
           TIME="${{ github.event.inputs.time || '18:30' }}"
           PARTY="${{ github.event.inputs.party || '3' }}"
-          xvfb-run --auto-servernum node snipe.js --rid=$RID --date=$DATE --time=$TIME --party=$PARTY --interval=15 --duration=10
+          xvfb-run --auto-servernum node snipe.js --rid=$RID --date=$DATE --time=$TIME --party=$PARTY --interval=15 --duration=15

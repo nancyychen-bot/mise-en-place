@@ -30,11 +30,11 @@ export async function GET() {
     const [rh, rm] = (r.release_time as string).split(':').map(Number);
     const releaseMinutes = rh * 60 + rm;
 
-    // Trigger if release is within the next 20 minutes
-    // GH Actions takes ~4 min to spin up, snipe polls for 10 min
-    // So trigger 5-20 min before release to ensure coverage
+    // Trigger if release is within -10 to +20 minutes
+    // GH Actions takes ~4 min to spin up, snipe polls for 15 min
+    // Wider window ensures we cover the exact release moment
     const diff = releaseMinutes - nowMinutes;
-    if (diff < -5 || diff > 20) continue;
+    if (diff < -10 || diff > 20) continue;
 
     // Target date = today + release_days_ahead
     const targetDate = new Date(todayET);
