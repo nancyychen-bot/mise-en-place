@@ -17,6 +17,8 @@ const PatchSchema = z.object({
   dateEnd: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   autoBook: z.boolean().optional(),
   preferredTime: z.string().regex(timeRe).nullable().optional(),
+  releaseDaysAhead: z.number().int().min(1).max(90).nullable().optional(),
+  releaseTime: z.string().regex(timeRe).nullable().optional(),
 });
 
 type Params = { params: Promise<{ id: string }> };
@@ -54,6 +56,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (parsed.data.dateEnd !== undefined) updates.date_end = parsed.data.dateEnd;
   if (parsed.data.autoBook !== undefined) updates.auto_book = parsed.data.autoBook;
   if (parsed.data.preferredTime !== undefined) updates.preferred_time = parsed.data.preferredTime;
+  if (parsed.data.releaseDaysAhead !== undefined) updates.release_days_ahead = parsed.data.releaseDaysAhead;
+  if (parsed.data.releaseTime !== undefined) updates.release_time = parsed.data.releaseTime;
 
   const { data, error } = await db
     .from('restaurants')

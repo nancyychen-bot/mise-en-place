@@ -39,6 +39,8 @@ function normalizeRestaurant(r: any): Restaurant {
     dateEnd: r.date_end ?? null,
     autoBook: r.auto_book ?? false,
     preferredTime: r.preferred_time ?? null,
+    releaseDaysAhead: r.release_days_ahead ?? null,
+    releaseTime: r.release_time ?? null,
   };
 }
 

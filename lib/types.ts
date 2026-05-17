@@ -50,6 +50,8 @@ export interface Restaurant {
   dateEnd: string | null;    // "YYYY-MM-DD"
   autoBook: boolean;
   preferredTime: string | null; // "19:30" (24h)
+  releaseDaysAhead: number | null;
+  releaseTime: string | null;   // "09:00" (24h)
 }
 
 export interface Slot {
