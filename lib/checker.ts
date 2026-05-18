@@ -54,8 +54,14 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
   const withTimeout = <T>(p: Promise<T>): Promise<T> =>
     Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error('timeout')), 12000))]);
 
+  // Resy/OpenTable availability is fetched and notified by GH Actions checkers —
+  // skip them here to avoid log spam and stale-data overwrites.
+  const checkableRestaurants = restaurants.filter(
+    (r) => r.platform !== 'resy' && r.platform !== 'opentable'
+  );
+
   const results: CheckResult[] = await Promise.all(
-    restaurants.map(async (restaurant) => {
+    checkableRestaurants.map(async (restaurant) => {
       await sleep(Math.random() * 500);
       const checkedAt = new Date();
       try {
@@ -89,11 +95,7 @@ export async function checkUserWatchlist(userId: string, force = false): Promise
         const combos = effectiveDates.flatMap(date => sizes.map(size => ({ date, size })));
 
         let fetchError = '';
-        // OpenTable and Resy availability is populated by external checkers
-        // (GitHub Actions) — skip the API call and use stored slots.
-        const slotsByDate = (restaurant.platform === 'opentable' || restaurant.platform === 'resy')
-          ? [prevSlots]
-          : await Promise.all(
+        const slotsByDate = await Promise.all(
               combos.map(async ({ date, size }) => {
                 let slots: Slot[] = [];
                 try {
@@ -268,9 +270,6 @@ async function detectPlatformTransitions(
       .gte('created_at', oneHourAgo);
 
     if (recentLogs && recentLogs.length > 0) {
-      const resyLogs = recentLogs.filter((l: { message: string }) =>
-        l.message.includes('[err:') || !l.message.includes('[err:')
-      );
       const resyErrors = recentLogs.filter((l: { message: string }) => l.message.includes('[err:'));
       const failRate = resyErrors.length / recentLogs.length;
 
