@@ -445,16 +445,29 @@ async function main() {
   await closeBrowser();
   console.log(`[check] done — checked ${checked} restaurant(s)`);
 
-  // Platform health: alert if all restaurants returned 0 slots
+  // Platform health: alert if all restaurants returned 0 slots (1-hour cooldown)
   if (checked >= 2) {
-    const allEmpty = restaurants.every(r => (r.available_slots ?? []).length === 0);
-    if (allEmpty) {
-      const adminTopic = process.env.ADMIN_NTFY_TOPIC ?? 'miseenplacefailure';
-      await fetch(`https://ntfy.sh/${encodeURIComponent(adminTopic)}`, {
-        method: 'POST',
-        headers: { Title: 'OpenTable checker: all restaurants failing', Priority: 'high', Tags: 'warning' },
-        body: `${checked} restaurant(s) checked, all returned 0 slots`,
-      }).catch(() => {});
+    let totalSlots = 0;
+    for (const r of restaurants) {
+      const { data: fresh } = await db.from('restaurants').select('available_slots').eq('id', r.id).single();
+      totalSlots += (fresh?.available_slots ?? []).length;
+    }
+    if (totalSlots === 0) {
+      const { data: health } = await db.from('user_settings')
+        .select('platform_health').limit(1).single();
+      const lastAlert = (health?.platform_health)?.opentable_failure_alerted_at;
+      const cooldownOk = !lastAlert || (Date.now() - new Date(lastAlert).getTime() > 60 * 60 * 1000);
+      if (cooldownOk) {
+        const adminTopic = process.env.ADMIN_NTFY_TOPIC ?? 'miseenplacefailure';
+        await fetch(`https://ntfy.sh/${encodeURIComponent(adminTopic)}`, {
+          method: 'POST',
+          headers: { Title: 'OpenTable checker: all restaurants failing', Priority: 'high', Tags: 'warning' },
+          body: `${checked} restaurant(s) checked, all returned 0 slots`,
+        }).catch(() => {});
+        await db.from('user_settings').update({
+          platform_health: { ...(health?.platform_health ?? {}), opentable_failure_alerted_at: new Date().toISOString() },
+        }).limit(1);
+      }
     }
   }
 }
