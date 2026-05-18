@@ -613,8 +613,9 @@ async function main() {
   await closeBrowser();
   console.log(`[resy-check] done — checked ${checked} venue(s)`);
 
-  // Platform health: alert if all venues were throttled (1-hour cooldown)
-  if (checked >= 2) {
+  // Platform health: alert if all venues were throttled (1-hour cooldown, batch 1 only)
+  const isBatch1 = !batchArg || batchArg.split('=')[1]?.startsWith('1/');
+  if (isBatch1 && checked >= 2) {
     let totalSlots = 0;
     for (const [, venue] of uniqueVenues) {
       for (const { restaurant } of venue.restaurants) {
