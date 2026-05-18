@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 20
     strategy:
       matrix:
-        batch: ['1/10', '2/10', '3/10', '4/10', '5/10', '6/10', '7/10', '8/10', '9/10', '10/10']
+        batch: ['1/4', '2/4', '3/4', '4/4']
     steps:
       - uses: actions/checkout@v4
 
@@ -30,9 +30,10 @@ jobs:
         run: npm ci
 
       - name: Cache Playwright browsers
+        id: pw-cache
         uses: actions/cache@v4
         with:
-          path: ~/Library/Caches/ms-playwright
+          path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('scripts/resy-checker/package-lock.json') }}
 
       - name: Install Playwright browsers
