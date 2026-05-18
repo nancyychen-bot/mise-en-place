@@ -33,6 +33,23 @@ if (!supabaseUrl || !supabaseKey || !resyApiKey) {
 }
 const db = createClient(supabaseUrl, supabaseKey);
 
+function isInQuietHours(settings) {
+  if (!settings?.quiet_hours_start || !settings?.quiet_hours_end) return false;
+  const tz = settings.timezone ?? 'America/New_York';
+  const now = new Date();
+  let current;
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tz,
+    }).formatToParts(now);
+    const h = parts.find(p => p.type === 'hour')?.value ?? '00';
+    const m = parts.find(p => p.type === 'minute')?.value ?? '00';
+    current = `${h === '24' ? '00' : h}:${m}`;
+  } catch { current = `${String(now.getUTCHours()).padStart(2,'0')}:${String(now.getUTCMinutes()).padStart(2,'0')}`; }
+  const { quiet_hours_start: start, quiet_hours_end: end } = settings;
+  return start <= end ? (current >= start && current < end) : (current >= start || current < end);
+}
+
 const CITY_GEO = {
   ny:  { lat: 40.7128,  long: -74.0060 },
   chi: { lat: 41.8781,  long: -87.6298 },
@@ -337,7 +354,7 @@ async function main() {
   const userIds = [...new Set(restaurants.map((r) => r.user_id))];
   const { data: allSettings, error: settingsErr } = await db
     .from('user_settings')
-    .select('user_id, earliest_time, latest_time, day_range, days_of_week, timezone, monitoring_enabled, ntfy_topic, ntfy_priority')
+    .select('user_id, earliest_time, latest_time, day_range, days_of_week, timezone, monitoring_enabled, ntfy_topic, ntfy_priority, quiet_hours_start, quiet_hours_end')
     .in('user_id', userIds);
   if (settingsErr) {
     console.error('[resy-check] settings load failed:', settingsErr.message);
@@ -570,8 +587,9 @@ async function main() {
 
       // Send ntfy for new slots (even without auto-book)
       if (newSlots.length > 0) {
-        const ntfyTopic = settingsMap.get(restaurant.user_id)?.ntfy_topic;
-        if (ntfyTopic) {
+        const userSettings = settingsMap.get(restaurant.user_id);
+        const ntfyTopic = userSettings?.ntfy_topic;
+        if (ntfyTopic && !isInQuietHours(userSettings)) {
           const timeList = [...new Set(newSlots.map(s => s.displayTime))].join(', ');
           const dateList = [...new Set(newSlots.map(s => s.date))].join(', ');
           const bookingUrl = getResyBookingUrl(restaurant, newSlots[0]);
@@ -594,6 +612,27 @@ async function main() {
 
   await closeBrowser();
   console.log(`[resy-check] done — checked ${checked} venue(s)`);
+
+  // Platform health: alert if all venues were throttled
+  if (checked > 0) {
+    let allErrored = true;
+    for (const [, venue] of uniqueVenues) {
+      // Venue had at least some slots → not fully errored
+      if (venue.restaurants.some(({ restaurant }) => (restaurant.available_slots ?? []).length > 0)) {
+        allErrored = false;
+        break;
+      }
+    }
+    // Only alert if we actually checked venues and ALL failed
+    if (allErrored && checked >= 2) {
+      const adminTopic = process.env.ADMIN_NTFY_TOPIC ?? 'miseenplacefailure';
+      await fetch(`https://ntfy.sh/${encodeURIComponent(adminTopic)}`, {
+        method: 'POST',
+        headers: { Title: 'Resy checker: all venues failing', Priority: 'high', Tags: 'warning' },
+        body: `${checked} venue(s) checked, all returned 0 slots or errors`,
+      }).catch(() => {});
+    }
+  }
 }
 
 main().catch((err) => {

@@ -31,6 +31,23 @@ if (!supabaseUrl || !supabaseKey) {
 }
 const db = createClient(supabaseUrl, supabaseKey);
 
+function isInQuietHours(settings) {
+  if (!settings?.quiet_hours_start || !settings?.quiet_hours_end) return false;
+  const tz = settings.timezone ?? 'America/New_York';
+  const now = new Date();
+  let current;
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tz,
+    }).formatToParts(now);
+    const h = parts.find(p => p.type === 'hour')?.value ?? '00';
+    const m = parts.find(p => p.type === 'minute')?.value ?? '00';
+    current = `${h === '24' ? '00' : h}:${m}`;
+  } catch { current = `${String(now.getUTCHours()).padStart(2,'0')}:${String(now.getUTCMinutes()).padStart(2,'0')}`; }
+  const { quiet_hours_start: start, quiet_hours_end: end } = settings;
+  return start <= end ? (current >= start && current < end) : (current >= start || current < end);
+}
+
 // ── Helpers ─────────────────────────────────────────────────────────
 
 /**
@@ -216,7 +233,7 @@ async function main() {
   const userIds = [...new Set(restaurants.map((r) => r.user_id))];
   const { data: allSettings, error: settingsErr } = await db
     .from('user_settings')
-    .select('user_id, earliest_time, latest_time, day_range, days_of_week, timezone, monitoring_enabled, ntfy_topic, ntfy_priority')
+    .select('user_id, earliest_time, latest_time, day_range, days_of_week, timezone, monitoring_enabled, ntfy_topic, ntfy_priority, quiet_hours_start, quiet_hours_end')
     .in('user_id', userIds);
 
   if (settingsErr) {
@@ -394,8 +411,9 @@ async function main() {
     });
 
     if (newSlots.length > 0) {
-      const ntfyTopic = settingsMap.get(restaurant.user_id)?.ntfy_topic;
-      if (ntfyTopic) {
+      const userSettings = settingsMap.get(restaurant.user_id);
+      const ntfyTopic = userSettings?.ntfy_topic;
+      if (ntfyTopic && !isInQuietHours(userSettings)) {
         const timeList = [...new Set(newSlots.map(s => s.displayTime))].join(', ');
         const dateList = [...new Set(newSlots.map(s => s.date))].join(', ');
         const rid = restaurant.venue_id;
@@ -426,6 +444,19 @@ async function main() {
 
   await closeBrowser();
   console.log(`[check] done — checked ${checked} restaurant(s)`);
+
+  // Platform health: alert if all restaurants returned 0 slots
+  if (checked >= 2) {
+    const allEmpty = restaurants.every(r => (r.available_slots ?? []).length === 0);
+    if (allEmpty) {
+      const adminTopic = process.env.ADMIN_NTFY_TOPIC ?? 'miseenplacefailure';
+      await fetch(`https://ntfy.sh/${encodeURIComponent(adminTopic)}`, {
+        method: 'POST',
+        headers: { Title: 'OpenTable checker: all restaurants failing', Priority: 'high', Tags: 'warning' },
+        body: `${checked} restaurant(s) checked, all returned 0 slots`,
+      }).catch(() => {});
+    }
+  }
 }
 
 main().catch((err) => {
