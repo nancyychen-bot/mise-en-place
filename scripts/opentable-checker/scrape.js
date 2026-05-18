@@ -215,29 +215,36 @@ export async function scrapeOpenTableMultiDate(restaurantId, dates, partySize) {
     if (response && response.status() >= 400) return results;
 
     try { await page.waitForLoadState('networkidle', { timeout: 15000 }); } catch {}
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(1000);
 
+    let isFirstDate = true;
     for (const date of dates) {
       try {
-        const dateUrl = `https://www.opentable.com/booking/restref/availability?rid=${restaurantId}&restRef=${restaurantId}&partySize=${partySize}&date=${date}&time=19%3A00%3A00&lang=en-US`;
-        await page.goto(dateUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-        try { await page.waitForLoadState('networkidle', { timeout: 10000 }); } catch {}
-        await page.waitForTimeout(2000);
-
-        // Navigate the calendar to the correct date (URL param is often ignored)
-        try {
-          await setDate(page, date);
-        } catch (calErr) {
-          console.error(`[scrape] calendar nav failed for ${date}:`, calErr.message);
+        if (isFirstDate) {
+          isFirstDate = false;
+        } else {
+          // Flip date via calendar instead of full page reload
+          try {
+            await setDate(page, date);
+          } catch (calErr) {
+            // Calendar nav failed — fall back to full navigation
+            console.error(`[scrape] calendar nav failed for ${date}, reloading:`, calErr.message);
+            await page.goto(
+              `https://www.opentable.com/booking/restref/availability?rid=${restaurantId}&restRef=${restaurantId}&partySize=${partySize}&date=${date}&time=19%3A00%3A00&lang=en-US`,
+              { waitUntil: 'domcontentloaded', timeout: 30000 }
+            );
+            try { await page.waitForLoadState('networkidle', { timeout: 10000 }); } catch {}
+            await page.waitForTimeout(1000);
+          }
         }
 
         try { await page.selectOption('#party-size-picker', String(partySize)); } catch {}
 
         const findTableBtn = page.getByRole('button', { name: /find a table/i });
-        const hasFindTable = await findTableBtn.isVisible({ timeout: 5000 }).catch(() => false);
+        const hasFindTable = await findTableBtn.isVisible({ timeout: 3000 }).catch(() => false);
         if (hasFindTable) {
           await findTableBtn.click();
-          await page.waitForTimeout(4000);
+          await page.waitForTimeout(2500);
         }
 
         const bodyText = await page.evaluate(() => document.body.innerText.slice(0, 300));
