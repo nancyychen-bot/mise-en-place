@@ -386,6 +386,13 @@ async function main() {
       console.log(`[check] ${restaurant.name} — ${allSlots.length} slot(s) in window, ${newSlots.length} new`);
     }
 
+    await db.from('activity_log').insert({
+      user_id: restaurant.user_id,
+      restaurant_id: restaurant.id,
+      type: 'check',
+      message: `Checked <strong>${restaurant.name}</strong> — ${allSlots.length} slot(s) available, ${newSlots.length} new (prev: ${(restaurant.available_slots ?? []).length})`,
+    });
+
     if (newSlots.length > 0) {
       const ntfyTopic = settingsMap.get(restaurant.user_id)?.ntfy_topic;
       if (ntfyTopic) {
