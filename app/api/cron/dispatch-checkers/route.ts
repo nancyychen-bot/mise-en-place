@@ -36,4 +36,4 @@ async function handler() {
   return NextResponse.json({ dispatched: results });
 }
 
-export { handler as GET, handler as POST };
+export { handler as GET, handler as POST, handler as HEAD };
