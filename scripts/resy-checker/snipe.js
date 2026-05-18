@@ -305,7 +305,16 @@ async function main() {
   }
 
   await context?.close().catch(() => {});
-  console.log(`[resy-snipe] done — ${attempt} attempts over ${Math.round((Date.now() - startTime) / 1000)}s`);
+  const duration = Math.round((Date.now() - startTime) / 1000);
+  console.log(`[resy-snipe] done — ${attempt} attempts over ${duration}s`);
+
+  if (settings?.ntfy_topic) {
+    await fetch(`https://ntfy.sh/${encodeURIComponent(settings.ntfy_topic)}`, {
+      method: 'POST',
+      headers: { Title: `Snipe finished: ${restaurant.name}`, Priority: 'low', Tags: 'mag' },
+      body: `${attempt} attempts over ${Math.round(duration / 60)} min — no availability found for ${DISPLAY_TIME} on ${TARGET_DATE}`,
+    }).catch(() => {});
+  }
 }
 
 main().catch((err) => {

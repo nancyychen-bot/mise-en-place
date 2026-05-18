@@ -145,12 +145,13 @@ async function main() {
   // Load auth cookie
   const { data: restaurants } = await db
     .from('restaurants')
-    .select('user_id')
+    .select('user_id, name')
     .eq('venue_id', RID)
     .eq('platform', 'opentable')
     .limit(1);
 
   const userId = restaurants?.[0]?.user_id;
+  const restaurantName = restaurants?.[0]?.name ?? `RID ${RID}`;
   if (!userId) {
     console.error(`[snipe] No restaurant found with venue_id=${RID}`);
     process.exit(1);
@@ -194,7 +195,7 @@ async function main() {
         if (settings.ntfy_topic) {
           await fetch(`https://ntfy.sh/${encodeURIComponent(settings.ntfy_topic)}`, {
             method: 'POST',
-            headers: { Title: `Sniped! Le Veau d'Or`, Priority: 'max', Tags: 'tada' },
+            headers: { Title: `Sniped! ${restaurantName}`, Priority: 'max', Tags: 'tada' },
             body: `${DISPLAY_TIME} on ${TARGET_DATE} for ${PARTY_SIZE} guests`,
           });
         }
@@ -202,7 +203,7 @@ async function main() {
         // Log and disable auto-book
         await db.from('activity_log').insert({
           user_id: userId, type: 'system',
-          message: `Sniped <strong>Le Veau d'Or</strong> at ${DISPLAY_TIME} on ${TARGET_DATE}`,
+          message: `Sniped <strong>${restaurantName}</strong> at ${DISPLAY_TIME} on ${TARGET_DATE}`,
         });
         await db.from('restaurants')
           .update({ auto_book: false })
@@ -227,7 +228,16 @@ async function main() {
   }
 
   await closeBrowser();
-  console.log(`[snipe] done — ${attempt} attempts over ${Math.round((Date.now() - startTime) / 1000)}s`);
+  const duration = Math.round((Date.now() - startTime) / 1000);
+  console.log(`[snipe] done — ${attempt} attempts over ${duration}s`);
+
+  if (settings?.ntfy_topic) {
+    await fetch(`https://ntfy.sh/${encodeURIComponent(settings.ntfy_topic)}`, {
+      method: 'POST',
+      headers: { Title: `Snipe finished: ${restaurantName}`, Priority: 'low', Tags: 'mag' },
+      body: `${attempt} attempts over ${Math.round(duration / 60)} min — no availability found for ${DISPLAY_TIME} on ${TARGET_DATE}`,
+    }).catch(() => {});
+  }
 }
 
 main().catch((err) => {
