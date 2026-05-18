@@ -1,8 +1,25 @@
 import { NextResponse } from 'next/server';
+import { db } from '@/lib/db';
+import { isCurrentTimeInActiveHours } from '@/lib/time-filter';
 
 export const dynamic = 'force-dynamic';
 
 async function handler() {
+  // Only dispatch if at least one user is in their active hours
+  const { data: settings } = await db
+    .from('user_settings')
+    .select('active_hours_start, active_hours_end, timezone, monitoring_enabled')
+    .eq('monitoring_enabled', true);
+
+  const now = new Date();
+  const anyActive = (settings ?? []).some((s) =>
+    isCurrentTimeInActiveHours(s.active_hours_start, s.active_hours_end, now, s.timezone ?? 'America/New_York')
+  );
+
+  if (!anyActive) {
+    return NextResponse.json({ skipped: 'outside active hours' });
+  }
+
   const ghToken = process.env.GITHUB_TOKEN;
   if (!ghToken) {
     return NextResponse.json({ error: 'GITHUB_TOKEN not set' }, { status: 500 });
