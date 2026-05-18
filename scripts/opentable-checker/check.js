@@ -385,6 +385,35 @@ async function main() {
     } else {
       console.log(`[check] ${restaurant.name} — ${allSlots.length} slot(s) in window, ${newSlots.length} new`);
     }
+
+    if (newSlots.length > 0) {
+      const ntfyTopic = settingsMap.get(restaurant.user_id)?.ntfy_topic;
+      if (ntfyTopic) {
+        const timeList = [...new Set(newSlots.map(s => s.displayTime))].join(', ');
+        const dateList = [...new Set(newSlots.map(s => s.date))].join(', ');
+        const rid = restaurant.venue_id;
+        const size = sizes[0];
+        const bookingUrl = `https://www.opentable.com/restref/client/?rid=${rid}&covers=${size}&datetime=${newSlots[0].date}T${newSlots[0].time}`;
+        await fetch(`https://ntfy.sh/${encodeURIComponent(ntfyTopic)}`, {
+          method: 'POST',
+          headers: {
+            Title: `${restaurant.name}`,
+            Priority: settingsMap.get(restaurant.user_id)?.ntfy_priority ?? 'default',
+            Tags: 'fork_and_knife',
+            Click: bookingUrl,
+          },
+          body: `${timeList} on ${dateList}`,
+        }).catch(() => {});
+      }
+
+      await db.from('activity_log').insert({
+        user_id: restaurant.user_id,
+        restaurant_id: restaurant.id,
+        type: 'found',
+        message: `🍽 <strong>${restaurant.name}</strong> — ${[...new Set(newSlots.map(s => s.displayTime))].join(', ')} on ${[...new Set(newSlots.map(s => s.date))].join(', ')}`,
+      });
+    }
+
     checked++;
   }
 
