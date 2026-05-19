@@ -78,9 +78,9 @@ export default function AccountPage() {
       monitoringEnabled: current.monitoringEnabled,
       timezone: current.timezone,
       resyApiKey: current.resyApiKey ?? undefined,
-      resyAuthToken: current.resyAuthToken && current.resyAuthToken !== '••••••' ? current.resyAuthToken : undefined,
-      opentableSession: current.opentableSession && current.opentableSession !== '••••••' ? current.opentableSession : undefined,
-      sevenroomsAuthToken: current.sevenroomsAuthToken && current.sevenroomsAuthToken !== '••••••' ? current.sevenroomsAuthToken : undefined,
+      resyAuthToken: current.resyAuthToken && !current.resyAuthToken.includes('••••••') ? current.resyAuthToken : undefined,
+      opentableSession: current.opentableSession && !current.opentableSession.includes('••••••') ? current.opentableSession : undefined,
+      sevenroomsAuthToken: current.sevenroomsAuthToken && !current.sevenroomsAuthToken.includes('••••••') ? current.sevenroomsAuthToken : undefined,
     };
     try {
       const res = await fetch('/api/account', {

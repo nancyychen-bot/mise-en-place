@@ -29,9 +29,9 @@ export async function GET() {
     monitoringEnabled: settings?.monitoring_enabled ?? true,
     timezone: settings?.timezone ?? 'America/New_York',
     resyApiKey: settings?.resy_api_key ?? null,
-    resyAuthToken: settings?.resy_auth_token ? '••••••' : null,
-    opentableSession: settings?.opentable_session ? '••••••' : null,
-    sevenroomsAuthToken: settings?.sevenrooms_auth_token ? '••••••' : null,
+    resyAuthToken: settings?.resy_auth_token ? `${settings.resy_auth_token.slice(0, 4)}••••••` : null,
+    opentableSession: settings?.opentable_session ? `${settings.opentable_session.slice(0, 4)}••••••` : null,
+    sevenroomsAuthToken: settings?.sevenrooms_auth_token ? `${settings.sevenrooms_auth_token.slice(0, 4)}••••••` : null,
     tokenExpired: settings?.token_expired ?? {},
   });
 }
