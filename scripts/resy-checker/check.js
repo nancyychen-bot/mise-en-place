@@ -181,6 +181,7 @@ async function findResyAvailability(venueId, day, partySize, city) {
       date: day,
       time,
       displayTime,
+      partySize,
       type: s?.config?.type ?? undefined,
       bookingToken: s?.config?.token ?? undefined,
     };
@@ -485,12 +486,17 @@ async function main() {
       }
     }
 
-    // Distribute results to each restaurant row, filtered by that user's time window
+    // Distribute results to each restaurant row, filtered by party size and time window
     const now = new Date().toISOString();
     for (const { restaurant, settings } of venue.restaurants) {
+      const rowSizes = new Set(
+        Array.isArray(restaurant.party_sizes) && restaurant.party_sizes.length > 0
+          ? restaurant.party_sizes
+          : [restaurant.party_size]
+      );
       const earliest = restaurant.earliest_time || settings.earliest_time;
       const latest = restaurant.latest_time || settings.latest_time;
-      const filtered = rawSlots.filter(s => inWindow(s.time, earliest, latest));
+      const filtered = rawSlots.filter(s => rowSizes.has(s.partySize) && inWindow(s.time, earliest, latest));
 
       // Detect new slots (not in previous available_slots)
       const prevKeys = new Set(
