@@ -34,13 +34,17 @@ export async function GET() {
     // Narrow window ensures one dispatch per cron tick (cron runs every 15 min)
     // GH Actions takes ~4 min to spin up, then polls for 15 min
     let diff = releaseMinutes - nowMinutes;
-    // Handle midnight wraparound (e.g., now=23:58, release=00:00 → diff should be +2)
+    // Handle midnight wraparound (e.g., now=23:56, release=00:00 → diff should be +4)
+    let crossesMidnight = false;
     if (diff > 720) diff -= 1440;
-    if (diff < -720) diff += 1440;
+    if (diff < -720) { diff += 1440; crossesMidnight = true; }
     if (diff < -5 || diff > 5) continue;
 
     // Target date = today + release_days_ahead
-    const targetDate = new Date(todayET);
+    // If we're before midnight checking a post-midnight release, use tomorrow as base
+    const baseDate = new Date(todayET);
+    if (crossesMidnight) baseDate.setDate(baseDate.getDate() + 1);
+    const targetDate = new Date(baseDate);
     targetDate.setDate(targetDate.getDate() + (r.release_days_ahead as number));
     const targetDateStr = targetDate.toISOString().slice(0, 10);
 

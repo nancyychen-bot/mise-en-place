@@ -244,6 +244,8 @@ async function main() {
 
   const startTime = Date.now();
   let attempt = 0;
+  let booked = false;
+  let authExpired = false;
 
   while (Date.now() - startTime < MAX_DURATION) {
     attempt++;
@@ -263,6 +265,7 @@ async function main() {
         const result = await bookBestSlot(inWindow, settings.resy_auth_token);
 
         if (result.booked) {
+          booked = true;
           console.log(`[resy-snipe] BOOKED! ${result.slot.displayTime} on ${TARGET_DATE}`);
 
           if (settings.ntfy_topic) {
@@ -289,6 +292,7 @@ async function main() {
         }
 
         if (result.authExpired) {
+          authExpired = true;
           console.error('[resy-snipe] auth token expired');
           break;
         }
@@ -308,11 +312,17 @@ async function main() {
   const duration = Math.round((Date.now() - startTime) / 1000);
   console.log(`[resy-snipe] done — ${attempt} attempts over ${duration}s`);
 
-  if (settings?.ntfy_topic) {
+  if (settings?.ntfy_topic && !booked) {
+    const title = authExpired
+      ? `Snipe failed: ${restaurant.name} (auth expired)`
+      : `Snipe finished: ${restaurant.name}`;
+    const body = authExpired
+      ? `Auth token expired after ${attempt} attempts. Update your Resy token.`
+      : `${attempt} attempts over ${Math.round(duration / 60)} min — no availability found for ${DISPLAY_TIME} on ${TARGET_DATE}`;
     await fetch(`https://ntfy.sh/${encodeURIComponent(settings.ntfy_topic)}`, {
       method: 'POST',
-      headers: { Title: `Snipe finished: ${restaurant.name}`, Priority: 'low', Tags: 'mag' },
-      body: `${attempt} attempts over ${Math.round(duration / 60)} min — no availability found for ${DISPLAY_TIME} on ${TARGET_DATE}`,
+      headers: { Title: title, Priority: authExpired ? 'high' : 'low', Tags: authExpired ? 'warning' : 'mag' },
+      body,
     }).catch(() => {});
   }
 }
