@@ -613,34 +613,6 @@ async function main() {
   await closeBrowser();
   console.log(`[resy-check] done — checked ${checked} venue(s)`);
 
-  // Platform health: alert if all venues were throttled (1-hour cooldown, batch 1 only)
-  const isBatch1 = !batchArg || batchArg.split('=')[1]?.startsWith('1/');
-  if (isBatch1 && checked >= 2) {
-    let totalSlots = 0;
-    for (const [, venue] of uniqueVenues) {
-      for (const { restaurant } of venue.restaurants) {
-        const { data: fresh } = await db.from('restaurants').select('available_slots').eq('id', restaurant.id).single();
-        totalSlots += (fresh?.available_slots ?? []).length;
-      }
-    }
-    if (totalSlots === 0) {
-      const { data: health } = await db.from('user_settings')
-        .select('platform_health').limit(1).single();
-      const lastAlert = (health?.platform_health)?.resy_failure_alerted_at;
-      const cooldownOk = !lastAlert || (Date.now() - new Date(lastAlert).getTime() > 60 * 60 * 1000);
-      if (cooldownOk) {
-        const adminTopic = process.env.ADMIN_NTFY_TOPIC ?? 'miseenplacefailure';
-        await fetch(`https://ntfy.sh/${encodeURIComponent(adminTopic)}`, {
-          method: 'POST',
-          headers: { Title: 'Resy checker: all venues failing', Priority: 'high', Tags: 'warning' },
-          body: `${checked} venue(s) checked, all returned 0 slots or errors`,
-        }).catch(() => {});
-        await db.from('user_settings').update({
-          platform_health: { ...(health?.platform_health ?? {}), resy_failure_alerted_at: new Date().toISOString() },
-        }).limit(1);
-      }
-    }
-  }
 }
 
 main().catch((err) => {
