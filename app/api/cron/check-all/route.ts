@@ -55,7 +55,14 @@ async function handler(req: NextRequest) {
   for (const r of extRestaurants ?? []) {
     const slots = Array.isArray(r.available_slots) ? r.available_slots : [];
     if (slots.length === 0) continue;
-    const valid = slots.filter((s: { date?: string }) => s.date && s.date >= todayStr);
+    // Remove slots with past dates, and slots with today's date where the time has passed
+    const nowET = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
+    const nowTime = `${String(nowET.getHours()).padStart(2, '0')}:${String(nowET.getMinutes()).padStart(2, '0')}`;
+    const valid = slots.filter((s: { date?: string; time?: string }) => {
+      if (!s.date || s.date < todayStr) return false;
+      if (s.date === todayStr && s.time && s.time < nowTime) return false;
+      return true;
+    });
     if (valid.length < slots.length) {
       await db.from('restaurants').update({
         available_slots: valid,

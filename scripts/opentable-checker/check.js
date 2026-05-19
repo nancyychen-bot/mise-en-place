@@ -444,8 +444,6 @@ async function main() {
 
   await closeBrowser();
   console.log(`[check] done — checked ${checked} restaurant(s)`);
-
-  }
 }
 
 main().catch((err) => {
