@@ -33,7 +33,10 @@ export async function GET() {
     // Trigger if release is within -5 to +5 minutes of now
     // Narrow window ensures one dispatch per cron tick (cron runs every 15 min)
     // GH Actions takes ~4 min to spin up, then polls for 15 min
-    const diff = releaseMinutes - nowMinutes;
+    let diff = releaseMinutes - nowMinutes;
+    // Handle midnight wraparound (e.g., now=23:58, release=00:00 → diff should be +2)
+    if (diff > 720) diff -= 1440;
+    if (diff < -720) diff += 1440;
     if (diff < -5 || diff > 5) continue;
 
     // Target date = today + release_days_ahead
