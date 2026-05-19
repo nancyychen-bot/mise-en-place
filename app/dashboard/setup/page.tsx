@@ -197,11 +197,17 @@ export default function SetupPage() {
         <ol style={{ margin: '12px 0 16px 22px', fontSize: '14px', lineHeight: 1.7, color: 'var(--text)' }}>
           <li><strong>Log into your account</strong> on <strong>resy.com</strong></li>
           <li>Open DevTools (<code className="code">Cmd + Option + I</code> on Mac, <code className="code">F12</code> on Windows)</li>
-          <li>Go to the <strong>Network</strong> tab, then search for any restaurant on Resy</li>
-          <li>Click any <code className="code">api.resy.com</code> request, then click <strong>Headers</strong></li>
-          <li>Find <code className="code">x-resy-auth-token</code> and copy the value</li>
+          <li>Go to the <strong>Network</strong> tab</li>
+          <li><strong>Click your profile icon</strong> or go to <strong>My Reservations</strong> — this triggers an authenticated API call</li>
+          <li>In the Network tab, look for a request to <code className="code">api.resy.com</code> (e.g. <code className="code">/2/user</code>), click it, then click <strong>Headers</strong></li>
+          <li>Under <strong>Request Headers</strong>, find <code className="code">x-resy-auth-token</code> and copy the value</li>
           <li>Paste it into the Resy Token field on your <Link href="/dashboard/account" style={{ textDecoration: 'underline' }}>Account</Link> page</li>
         </ol>
+        <Callout variant="tip">
+          <strong>Can&rsquo;t find the token?</strong> The header only appears on authenticated requests.
+          Browsing or searching won&rsquo;t show it — you need to visit your profile, reservations,
+          or go through the booking flow (click &ldquo;Reserve Now&rdquo; on any restaurant).
+        </Callout>
 
         <strong style={{ fontSize: '13px' }}>For OpenTable:</strong>
         <ol style={{ margin: '12px 0 16px 22px', fontSize: '14px', lineHeight: 1.7, color: 'var(--text)' }}>
