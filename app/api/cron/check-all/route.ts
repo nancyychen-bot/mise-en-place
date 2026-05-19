@@ -40,6 +40,30 @@ async function handler(req: NextRequest) {
     return NextResponse.json({ checked: 0 });
   }
 
+  // Clean up expired slots for Resy/OpenTable (GH Actions checkers own this
+  // data but don't clean expired dates when throttled)
+  const todayStr = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date());
+
+  const { data: extRestaurants } = await db
+    .from('restaurants')
+    .select('id, available_slots')
+    .in('platform', ['resy', 'opentable'])
+    .eq('active', true);
+
+  for (const r of extRestaurants ?? []) {
+    const slots = Array.isArray(r.available_slots) ? r.available_slots : [];
+    if (slots.length === 0) continue;
+    const valid = slots.filter((s: { date?: string }) => s.date && s.date >= todayStr);
+    if (valid.length < slots.length) {
+      await db.from('restaurants').update({
+        available_slots: valid,
+        slots_updated_at: new Date().toISOString(),
+      }).eq('id', r.id);
+    }
+  }
+
   // Fan out — each user's check is independent
   await Promise.all(
     dueUserIds.map((userId) =>

@@ -105,13 +105,16 @@ export default function WatchlistClient({
       clearTimeout(timeout);
       const data = await res.json();
       if (res.ok && Array.isArray(data)) {
-        // Build slotMap from results and update last_checked timestamps
-        const map: Record<string, Slot[]> = {};
+        // Merge check results with existing slots (Resy/OpenTable are checked
+        // by GH Actions, not the Vercel checker, so preserve their stored slots)
         const now = new Date();
-        data.forEach((r: { restaurantId: string; slots: Slot[] }) => {
-          map[r.restaurantId] = r.slots;
+        setSlotMap((prev) => {
+          const merged = { ...prev };
+          data.forEach((r: { restaurantId: string; slots: Slot[] }) => {
+            merged[r.restaurantId] = r.slots;
+          });
+          return merged;
         });
-        setSlotMap(map);
         setRestaurants((prev) =>
           prev.map((r) => ({ ...r, lastChecked: now }))
         );
