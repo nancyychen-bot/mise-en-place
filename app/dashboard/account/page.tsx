@@ -291,7 +291,7 @@ export default function AccountPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
                 <input
-                  type="password"
+                  type="text"
                   style={inputStyle}
                   value={data[field] ?? ''}
                   onChange={(e) => setData((d) => ({ ...d, [field]: e.target.value || null }))}
