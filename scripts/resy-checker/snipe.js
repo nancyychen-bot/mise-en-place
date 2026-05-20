@@ -77,12 +77,23 @@ const CITY_GEO = {
 let context = null;
 let apiPage = null;
 
+const proxyConfig = process.env.BRIGHT_DATA_HOST ? {
+  proxy: {
+    server: `http://${process.env.BRIGHT_DATA_HOST}:${process.env.BRIGHT_DATA_PORT || '33335'}`,
+    username: process.env.BRIGHT_DATA_USER,
+    password: process.env.BRIGHT_DATA_PASS,
+  },
+} : {};
+
 async function launchAndWarm() {
   const userDataDir = mkdtempSync(join(tmpdir(), 'resy-snipe-'));
   const isMac = platform === 'darwin';
 
+  if (proxyConfig.proxy) console.log('[resy-snipe] using Bright Data proxy');
+
   context = await chromium.launchPersistentContext(userDataDir, {
     ...(isMac ? { channel: 'chrome', headless: false } : { headless: true }),
+    ...proxyConfig,
     args: [
       '--disable-blink-features=AutomationControlled',
       ...(isMac ? [] : ['--disable-gpu', '--no-sandbox']),

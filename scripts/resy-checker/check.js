@@ -67,13 +67,24 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 let context = null;
 
+const proxyConfig = process.env.BRIGHT_DATA_HOST ? {
+  proxy: {
+    server: `http://${process.env.BRIGHT_DATA_HOST}:${process.env.BRIGHT_DATA_PORT || '33335'}`,
+    username: process.env.BRIGHT_DATA_USER,
+    password: process.env.BRIGHT_DATA_PASS,
+  },
+} : {};
+
 async function launchBrowser() {
   if (!context || !context.browser()?.isConnected()) {
     const userDataDir = mkdtempSync(join(tmpdir(), 'resy-chrome-'));
     const isMac = platform === 'darwin';
 
+    if (proxyConfig.proxy) console.log('[resy-check] using Bright Data proxy');
+
     context = await chromium.launchPersistentContext(userDataDir, {
       ...(isMac ? { channel: 'chrome', headless: false } : { headless: true }),
+      ...proxyConfig,
       args: [
         '--disable-blink-features=AutomationControlled',
         ...(isMac ? [] : ['--disable-gpu', '--no-sandbox']),

@@ -10,15 +10,25 @@ function isMac() {
   return platform === 'darwin';
 }
 
+const proxyConfig = process.env.BRIGHT_DATA_HOST ? {
+  proxy: {
+    server: `http://${process.env.BRIGHT_DATA_HOST}:${process.env.BRIGHT_DATA_PORT || '33335'}`,
+    username: process.env.BRIGHT_DATA_USER,
+    password: process.env.BRIGHT_DATA_PASS,
+  },
+} : {};
+
 export async function launchBrowser() {
   if (!context || !context.browser()?.isConnected()) {
     const userDataDir = mkdtempSync(join(tmpdir(), 'ot-chrome-'));
 
+    if (proxyConfig.proxy) console.log('[opentable] using Bright Data proxy');
+
     if (isMac()) {
-      // macOS: must use system Chrome in headed mode (OpenTable blocks bundled Chromium)
       context = await chromium.launchPersistentContext(userDataDir, {
         channel: 'chrome',
         headless: false,
+        ...proxyConfig,
         args: ['--disable-blink-features=AutomationControlled'],
         viewport: { width: 1280, height: 800 },
         locale: 'en-US',
@@ -26,9 +36,9 @@ export async function launchBrowser() {
         ignoreDefaultArgs: ['--enable-automation'],
       });
     } else {
-      // Linux (GitHub Actions): use bundled Chromium, headed mode behind xvfb virtual display
       context = await chromium.launchPersistentContext(userDataDir, {
         headless: false,
+        ...proxyConfig,
         args: [
           '--disable-blink-features=AutomationControlled',
           '--disable-gpu',
