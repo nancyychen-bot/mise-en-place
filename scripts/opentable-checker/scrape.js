@@ -257,6 +257,29 @@ export async function scrapeOpenTableMultiDate(restaurantId, dates, partySize) {
           await page.waitForTimeout(2500);
         }
 
+        // Verify the page is showing the date we requested (prevents wrong-date bookings)
+        const pageUrl = page.url();
+        const urlDateMatch = pageUrl.match(/date=(\d{4}-\d{2}-\d{2})/);
+        if (urlDateMatch && urlDateMatch[1] !== date) {
+          console.log(`[scrape] ${date}: URL shows date=${urlDateMatch[1]} — skipping to avoid wrong-date booking`);
+          results.set(date, []);
+          continue;
+        }
+        const displayedDate = await page.evaluate(() => {
+          const el = document.querySelector('[data-test="date-picker-button"], [aria-label="Date selector"], input[type="date"]');
+          return el?.textContent?.trim() || el?.value || '';
+        });
+        const { month: dm, day: dd } = parseDate(date);
+        const pageShowsCorrectDate = !displayedDate || (
+          displayedDate.includes(String(dd)) &&
+          (displayedDate.includes(monthName(dm)) || displayedDate.includes(monthName(dm).slice(0, 3)))
+        );
+        if (!pageShowsCorrectDate) {
+          console.log(`[scrape] ${date}: page shows "${displayedDate}" instead — skipping to avoid wrong-date booking`);
+          results.set(date, []);
+          continue;
+        }
+
         const bodyText = await page.evaluate(() => document.body.innerText.slice(0, 300));
         const noAvail = bodyText.includes('no availability') || bodyText.includes('No availability');
 
