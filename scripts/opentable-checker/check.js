@@ -259,6 +259,8 @@ async function main() {
   // Cache key: "venueId:size" → Map<date, slots>
   const scrapeCache = new Map();
 
+  restaurants.sort((a, b) => (b.auto_book ? 1 : 0) - (a.auto_book ? 1 : 0));
+
   let checked = 0;
   for (const restaurant of restaurants) {
     const settings = settingsMap.get(restaurant.user_id);
