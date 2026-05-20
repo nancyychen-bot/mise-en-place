@@ -2,12 +2,12 @@ name: OpenTable Checker
 
 on:
   schedule:
-    - cron: '*/5 12-23,0-2 * * *'  # Every 5 min during 8am-10pm EDT
+    - cron: '*/5 12-23,0-6 * * *'  # Every 5 min during 8am-2am EDT
   workflow_dispatch: {}
 
 concurrency:
   group: opentable-checker
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   check:
@@ -42,4 +42,8 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          BRIGHT_DATA_HOST: ${{ secrets.BRIGHT_DATA_HOST }}
+          BRIGHT_DATA_PORT: ${{ secrets.BRIGHT_DATA_PORT }}
+          BRIGHT_DATA_USER: ${{ secrets.BRIGHT_DATA_USER }}
+          BRIGHT_DATA_PASS: ${{ secrets.BRIGHT_DATA_PASS }}
         run: xvfb-run node check.js
