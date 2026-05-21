@@ -289,7 +289,7 @@ async function main() {
         dates.push(d.toISOString().slice(0, 10));
       }
     } else {
-      const dayRange = Math.min(restaurant.day_range ?? settings.day_range ?? 14, 5);
+      const dayRange = Math.min(restaurant.day_range ?? settings.day_range ?? 14, 3);
       dates = getDateRange(dayRange, tz);
     }
 
