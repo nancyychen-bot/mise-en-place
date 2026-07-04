@@ -92,11 +92,9 @@ async function handleAuthExpired(userId, platform) {
     .eq('user_id', userId)
     .single();
   const expired = { ...(current?.token_expired ?? {}), [platform]: true };
+  // Don't clear auto_book: checkers and snipe-scheduler skip while token_expired
+  // is set, so auto-booking resumes automatically once the token is refreshed.
   await db.from('user_settings').update({ token_expired: expired }).eq('user_id', userId);
-  await db.from('restaurants')
-    .update({ auto_book: false })
-    .eq('user_id', userId)
-    .eq('platform', platform);
   if (current?.ntfy_topic) {
     await fetch(`https://ntfy.sh/${encodeURIComponent(current.ntfy_topic)}`, {
       method: 'POST',
@@ -106,7 +104,7 @@ async function handleAuthExpired(userId, platform) {
   }
   await db.from('activity_log').insert({
     user_id: userId, type: 'system',
-    message: `<strong>${platform}</strong> token expired — auto-booking disabled.`,
+    message: `<strong>${platform}</strong> token expired — auto-booking paused until token is updated.`,
   });
 }
 

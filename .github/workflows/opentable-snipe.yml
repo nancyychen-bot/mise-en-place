@@ -18,6 +18,10 @@ on:
       party:
         description: 'Party size'
         default: '3'
+      restaurant_id:
+        description: 'Restaurant row ID (optional — scopes booking to exact row)'
+        required: false
+        default: ''
 
 concurrency:
   group: opentable-snipe
@@ -54,4 +58,5 @@ jobs:
           DATE="${{ github.event.inputs.date || '2026-06-11' }}"
           TIME="${{ github.event.inputs.time || '18:30' }}"
           PARTY="${{ github.event.inputs.party || '3' }}"
-          xvfb-run --auto-servernum node snipe.js --rid=$RID --date=$DATE --time=$TIME --party=$PARTY --interval=15 --duration=15
+          RESTAURANT="${{ github.event.inputs.restaurant_id }}"
+          xvfb-run --auto-servernum node snipe.js --rid=$RID --date=$DATE --time=$TIME --party=$PARTY --restaurant=$RESTAURANT --interval=15 --duration=15

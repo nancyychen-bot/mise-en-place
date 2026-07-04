@@ -41,6 +41,7 @@ const args = Object.fromEntries(
 );
 
 const RID = args.rid;
+const RESTAURANT_ID = args.restaurant || null;
 const TARGET_DATE = args.date;
 const TARGET_TIME = args.time;
 const PARTY_SIZE = parseInt(args.party || '2', 10);
@@ -142,18 +143,19 @@ async function main() {
   console.log(`[snipe] Target: RID ${RID}, ${TARGET_DATE} at ${DISPLAY_TIME}, party ${PARTY_SIZE}`);
   console.log(`[snipe] Polling every ${POLL_INTERVAL / 1000}s for up to ${MAX_DURATION / 60000} min`);
 
-  // Load auth cookie
-  const { data: restaurants } = await db
+  // Load auth cookie — prefer the exact row (venue_id can be shared across users)
+  let query = db
     .from('restaurants')
-    .select('user_id, name')
-    .eq('venue_id', RID)
-    .eq('platform', 'opentable')
-    .limit(1);
+    .select('id, user_id, name')
+    .eq('platform', 'opentable');
+  query = RESTAURANT_ID ? query.eq('id', RESTAURANT_ID) : query.eq('venue_id', RID);
+  const { data: restaurants } = await query.limit(1);
 
-  const userId = restaurants?.[0]?.user_id;
-  const restaurantName = restaurants?.[0]?.name ?? `RID ${RID}`;
+  const restaurantRow = restaurants?.[0];
+  const userId = restaurantRow?.user_id;
+  const restaurantName = restaurantRow?.name ?? `RID ${RID}`;
   if (!userId) {
-    console.error(`[snipe] No restaurant found with venue_id=${RID}`);
+    console.error(`[snipe] No restaurant found with ${RESTAURANT_ID ? `id=${RESTAURANT_ID}` : `venue_id=${RID}`}`);
     process.exit(1);
   }
 
@@ -207,8 +209,7 @@ async function main() {
         });
         await db.from('restaurants')
           .update({ auto_book: false })
-          .eq('venue_id', RID)
-          .eq('platform', 'opentable');
+          .eq('id', restaurantRow.id);
 
         await page.close();
         break;

@@ -16,6 +16,13 @@ export async function GET() {
     return NextResponse.json({ checked: 0 });
   }
 
+  const userIds = [...new Set(restaurants.map((r) => r.user_id))];
+  const { data: allSettings } = await db
+    .from('user_settings')
+    .select('user_id, resy_auth_token, opentable_session, token_expired')
+    .in('user_id', userIds);
+  const settingsMap = new Map((allSettings ?? []).map((s) => [s.user_id, s]));
+
   const tz = 'America/New_York';
   const nowET = new Date(new Date().toLocaleString('en-US', { timeZone: tz }));
   const nowMinutes = nowET.getHours() * 60 + nowET.getMinutes();
@@ -27,18 +34,25 @@ export async function GET() {
   for (const r of restaurants) {
     if (r.platform !== 'opentable' && r.platform !== 'resy') continue;
 
+    const settings = settingsMap.get(r.user_id);
+    const hasToken = r.platform === 'resy'
+      ? !!settings?.resy_auth_token
+      : !!settings?.opentable_session;
+    if (!hasToken || settings?.token_expired?.[r.platform]) continue;
+
     const [rh, rm] = (r.release_time as string).split(':').map(Number);
     const releaseMinutes = rh * 60 + rm;
 
-    // Trigger if release is within -5 to +5 minutes of now
-    // Narrow window ensures one dispatch per cron tick (cron runs every 15 min)
-    // GH Actions takes ~4 min to spin up, then polls for 15 min
+    // Trigger if release is within -5 to +9 minutes of now.
+    // The [-5, +9] window spans exactly 15 minutes, tiling the 15-min cron
+    // (ticks at :11/:26/:41/:56) with no gaps and no double dispatch.
+    // GH Actions takes ~4 min to spin up, then polls for 15 min.
     let diff = releaseMinutes - nowMinutes;
     // Handle midnight wraparound (e.g., now=23:56, release=00:00 → diff should be +4)
     let crossesMidnight = false;
     if (diff > 720) diff -= 1440;
     if (diff < -720) { diff += 1440; crossesMidnight = true; }
-    if (diff < -5 || diff > 5) continue;
+    if (diff < -5 || diff > 9) continue;
 
     // Target date = today + release_days_ahead
     // If we're before midnight checking a post-midnight release, use tomorrow as base
@@ -70,8 +84,8 @@ export async function GET() {
 
     const workflow = r.platform === 'resy' ? 'resy-snipe.yml' : 'opentable-snipe.yml';
     const inputs = r.platform === 'resy'
-      ? { venue: r.venue_id, date: targetDateStr, time: preferredTime, party: String(partySize), city: (r.venue_city as string) ?? 'ny' }
-      : { rid: r.venue_id, date: targetDateStr, time: preferredTime, party: String(partySize) };
+      ? { venue: r.venue_id, date: targetDateStr, time: preferredTime, party: String(partySize), city: (r.venue_city as string) ?? 'ny', restaurant_id: String(r.id) }
+      : { rid: r.venue_id, date: targetDateStr, time: preferredTime, party: String(partySize), restaurant_id: String(r.id) };
 
     const dispatchRes = await fetch(
       `https://api.github.com/repos/nancyychen-bot/mise-en-place/actions/workflows/${workflow}/dispatches`,
@@ -98,6 +112,19 @@ export async function GET() {
     } else {
       const errText = await dispatchRes.text().catch(() => '');
       console.error(`[snipe-scheduler] dispatch failed for ${r.name}: ${dispatchRes.status} ${errText}`);
+      await db.from('activity_log').insert({
+        user_id: r.user_id,
+        restaurant_id: r.id,
+        type: 'system',
+        message: `Snipe dispatch FAILED for <strong>${r.name}</strong> — GitHub API ${dispatchRes.status}. Check GITHUB_TOKEN.`,
+      });
+      if (process.env.OWNER_NTFY_TOPIC) {
+        await fetch(`https://ntfy.sh/${encodeURIComponent(process.env.OWNER_NTFY_TOPIC)}`, {
+          method: 'POST',
+          headers: { Title: `Snipe dispatch failed: ${r.name}`, Priority: 'high', Tags: 'rotating_light' },
+          body: `GitHub API returned ${dispatchRes.status} — likely an expired GITHUB_TOKEN. ${errText.slice(0, 200)}`,
+        }).catch(() => {});
+      }
     }
   }
 

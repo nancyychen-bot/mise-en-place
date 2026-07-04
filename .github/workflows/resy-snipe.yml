@@ -18,6 +18,10 @@ on:
       city:
         description: 'City slug (ny, chi, la, sf)'
         default: 'ny'
+      restaurant_id:
+        description: 'Restaurant row ID (optional — scopes booking to exact row)'
+        required: false
+        default: ''
 
 concurrency:
   group: resy-snipe
@@ -56,4 +60,5 @@ jobs:
           TIME="${{ github.event.inputs.time }}"
           PARTY="${{ github.event.inputs.party || '2' }}"
           CITY="${{ github.event.inputs.city || 'ny' }}"
-          xvfb-run --auto-servernum node snipe.js --venue=$VENUE --date=$DATE --time=$TIME --party=$PARTY --city=$CITY --interval=10 --duration=15
+          RESTAURANT="${{ github.event.inputs.restaurant_id }}"
+          xvfb-run --auto-servernum node snipe.js --venue=$VENUE --date=$DATE --time=$TIME --party=$PARTY --city=$CITY --restaurant=$RESTAURANT --interval=10 --duration=15

@@ -43,6 +43,7 @@ const args = Object.fromEntries(
 );
 
 const VENUE_ID = args.venue;
+const RESTAURANT_ID = args.restaurant || null;
 const TARGET_DATE = args.date;
 const TARGET_TIME = args.time;
 const PARTY_SIZE = parseInt(args.party || '2', 10);
@@ -226,17 +227,17 @@ async function main() {
   console.log(`[resy-snipe] Target: venue ${VENUE_ID}, ${TARGET_DATE} at ${DISPLAY_TIME}, party ${PARTY_SIZE}`);
   console.log(`[resy-snipe] Polling every ${POLL_INTERVAL / 1000}s for up to ${MAX_DURATION / 60000} min`);
 
-  // Load auth token
-  const { data: restaurants } = await db
+  // Load auth token — prefer the exact row (venue_id can be shared across users)
+  let query = db
     .from('restaurants')
-    .select('user_id, name, venue_slug, venue_city')
-    .eq('venue_id', VENUE_ID)
-    .eq('platform', 'resy')
-    .limit(1);
+    .select('id, user_id, name, venue_slug, venue_city')
+    .eq('platform', 'resy');
+  query = RESTAURANT_ID ? query.eq('id', RESTAURANT_ID) : query.eq('venue_id', VENUE_ID);
+  const { data: restaurants } = await query.limit(1);
 
   const restaurant = restaurants?.[0];
   if (!restaurant) {
-    console.error(`[resy-snipe] No restaurant with venue_id=${VENUE_ID}`);
+    console.error(`[resy-snipe] No restaurant with ${RESTAURANT_ID ? `id=${RESTAURANT_ID}` : `venue_id=${VENUE_ID}`}`);
     process.exit(1);
   }
 
@@ -296,8 +297,7 @@ async function main() {
           });
           await db.from('restaurants')
             .update({ auto_book: false })
-            .eq('venue_id', VENUE_ID)
-            .eq('platform', 'resy');
+            .eq('id', restaurant.id);
 
           break;
         }
