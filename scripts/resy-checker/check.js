@@ -472,24 +472,49 @@ async function main() {
     let hadError = false;
     let consecutiveFailures = 0;
     let throttled = false;
+    let rewarmed = false;
+    const isThrottleError = (err) =>
+      err.message.includes('ERR_HTTP_RESPONSE_CODE_FAILURE') || err.message.includes('http_5');
     for (const date of dates) {
       if (throttled) break;
       for (const size of sizes) {
+        let slots = null;
         try {
-          const slots = await findResyAvailability(venueId, date, size, venue.city);
+          slots = await findResyAvailability(venueId, date, size, venue.city);
+        } catch (err) {
+          if (isThrottleError(err)) {
+            // Throttled response — back off, then retry once
+            console.error(`[resy-check] ${venue.name} ${date}/${size}: ${err.message} — backing off for retry`);
+            await sleep(8000 + Math.random() * 4000);
+            try {
+              slots = await findResyAvailability(venueId, date, size, venue.city);
+            } catch (err2) {
+              hadError = true;
+              console.error(`[resy-check] ${venue.name} ${date}/${size}: retry failed: ${err2.message}`);
+              if (isThrottleError(err2)) {
+                consecutiveFailures++;
+                if (consecutiveFailures >= 3) {
+                  if (!rewarmed) {
+                    rewarmed = true;
+                    consecutiveFailures = 0;
+                    console.log(`[resy-check] ${venue.name}: throttled — re-warming Imperva session`);
+                    await warmUpImperva();
+                  } else {
+                    console.log(`[resy-check] ${venue.name}: still throttled after re-warm — skipping remaining dates`);
+                    throttled = true;
+                    break;
+                  }
+                }
+              }
+            }
+          } else {
+            hadError = true;
+            console.error(`[resy-check] ${venue.name} ${date}/${size}: ${err.message}`);
+          }
+        }
+        if (slots) {
           consecutiveFailures = 0;
           rawSlots.push(...slots);
-        } catch (err) {
-          hadError = true;
-          console.error(`[resy-check] ${venue.name} ${date}/${size}: ${err.message}`);
-          if (err.message.includes('ERR_HTTP_RESPONSE_CODE_FAILURE') || err.message.includes('http_5')) {
-            consecutiveFailures++;
-            if (consecutiveFailures >= 3) {
-              console.log(`[resy-check] ${venue.name}: throttled — skipping remaining dates`);
-              throttled = true;
-              break;
-            }
-          }
         }
         await sleep(1500 + Math.random() * 500);
       }
