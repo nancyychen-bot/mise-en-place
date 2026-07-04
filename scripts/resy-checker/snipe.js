@@ -86,15 +86,16 @@ const proxyConfig = process.env.BRIGHT_DATA_HOST ? {
   },
 } : {};
 
-async function launchAndWarm() {
+async function launchAndWarm(useProxy = true) {
   const userDataDir = mkdtempSync(join(tmpdir(), 'resy-snipe-'));
   const isMac = platform === 'darwin';
+  const proxy = useProxy ? proxyConfig : {};
 
-  if (proxyConfig.proxy) console.log('[resy-snipe] using Bright Data proxy');
+  if (proxy.proxy) console.log('[resy-snipe] using Bright Data proxy');
 
   context = await chromium.launchPersistentContext(userDataDir, {
     ...(isMac ? { channel: 'chrome', headless: false } : { headless: true }),
-    ...proxyConfig,
+    ...proxy,
     args: [
       '--disable-blink-features=AutomationControlled',
       ...(isMac ? [] : ['--disable-gpu', '--no-sandbox']),
@@ -252,7 +253,16 @@ async function main() {
     process.exit(1);
   }
 
-  await launchAndWarm();
+  try {
+    await launchAndWarm();
+  } catch (err) {
+    if (!proxyConfig.proxy) throw err;
+    // Proxy likely dead — fall back to a direct connection rather than losing the run
+    console.error(`[resy-snipe] warm-up through proxy failed (${err.message}) — falling back to direct connection`);
+    await context?.close().catch(() => {});
+    context = null;
+    await launchAndWarm(false);
+  }
 
   const startTime = Date.now();
   let attempt = 0;

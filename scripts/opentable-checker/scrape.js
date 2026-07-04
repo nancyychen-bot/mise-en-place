@@ -18,17 +18,18 @@ const proxyConfig = process.env.BRIGHT_DATA_HOST ? {
   },
 } : {};
 
-export async function launchBrowser() {
+export async function launchBrowser({ useProxy = true } = {}) {
   if (!context || !context.browser()?.isConnected()) {
     const userDataDir = mkdtempSync(join(tmpdir(), 'ot-chrome-'));
+    const proxy = useProxy ? proxyConfig : {};
 
-    if (proxyConfig.proxy) console.log('[opentable] using Bright Data proxy');
+    if (proxy.proxy) console.log('[opentable] using Bright Data proxy');
 
     if (isMac()) {
       context = await chromium.launchPersistentContext(userDataDir, {
         channel: 'chrome',
         headless: false,
-        ...proxyConfig,
+        ...proxy,
         args: ['--disable-blink-features=AutomationControlled'],
         viewport: { width: 1280, height: 800 },
         locale: 'en-US',
@@ -38,7 +39,7 @@ export async function launchBrowser() {
     } else {
       context = await chromium.launchPersistentContext(userDataDir, {
         headless: false,
-        ...proxyConfig,
+        ...proxy,
         args: [
           '--disable-blink-features=AutomationControlled',
           '--disable-gpu',

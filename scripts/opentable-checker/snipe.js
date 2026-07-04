@@ -170,7 +170,22 @@ async function main() {
     process.exit(1);
   }
 
-  const ctx = await launchBrowser();
+  let ctx = await launchBrowser();
+
+  // If the proxy is dead, fall back to a direct connection rather than losing the run
+  if (process.env.BRIGHT_DATA_HOST) {
+    const probe = await ctx.newPage();
+    try {
+      await probe.goto('https://www.opentable.com', { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await probe.close();
+    } catch (err) {
+      console.error(`[snipe] proxy probe failed (${err.message}) — falling back to direct connection`);
+      await probe.close().catch(() => {});
+      await closeBrowser();
+      ctx = await launchBrowser({ useProxy: false });
+    }
+  }
+
   await ctx.addCookies([{
     name: 'authCke',
     value: settings.opentable_session,
