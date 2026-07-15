@@ -10,8 +10,42 @@ export default function SignUpPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [requestName, setRequestName] = useState('');
+  const [requestEmail, setRequestEmail] = useState('');
+  const [requestSource, setRequestSource] = useState('');
+  const [requestLoading, setRequestLoading] = useState(false);
+  const [requestSent, setRequestSent] = useState(false);
+  const [requestError, setRequestError] = useState('');
+
+  async function handleRequestCode(e: React.FormEvent) {
+    e.preventDefault();
+    setRequestError('');
+    setRequestLoading(true);
+
+    try {
+      const res = await fetch('/api/auth/request-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: requestName, email: requestEmail, source: requestSource }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setRequestError(data.error ?? 'Something went wrong');
+        return;
+      }
+
+      setRequestSent(true);
+    } catch {
+      setRequestError('Something went wrong. Please try again.');
+    } finally {
+      setRequestLoading(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -22,7 +56,7 @@ export default function SignUpPage() {
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, displayName: displayName || undefined }),
+        body: JSON.stringify({ email, password, displayName: displayName || undefined, inviteCode }),
       });
 
       const data = await res.json();
@@ -179,6 +213,48 @@ export default function SignUpPage() {
 
           <div>
             <label
+              htmlFor="inviteCode"
+              style={{
+                display: 'block',
+                fontSize: '10px',
+                fontWeight: 600,
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+                color: 'var(--text-secondary)',
+                marginBottom: '6px',
+              }}
+            >
+              Invite Code
+            </label>
+            <input
+              id="inviteCode"
+              type="text"
+              required
+              className="form-input"
+              value={inviteCode}
+              onChange={(e) => setInviteCode(e.target.value)}
+              placeholder="Enter your invite code"
+            />
+            <button
+              type="button"
+              onClick={() => setShowRequestModal(true)}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                marginTop: '6px',
+                fontSize: '12px',
+                color: 'var(--text-secondary)',
+                textDecoration: 'underline',
+                cursor: 'pointer',
+              }}
+            >
+              Request a code
+            </button>
+          </div>
+
+          <div>
+            <label
               htmlFor="password"
               style={{
                 display: 'block',
@@ -242,6 +318,199 @@ export default function SignUpPage() {
           Your data is encrypted and never shared.
         </p>
       </div>
+
+      {showRequestModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '24px',
+          }}
+          onClick={() => setShowRequestModal(false)}
+        >
+          <div
+            style={{
+              background: 'var(--bg)',
+              border: '1px solid var(--border)',
+              width: '100%',
+              maxWidth: '400px',
+              padding: '32px',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2
+              style={{
+                fontFamily: 'var(--font-family-serif)',
+                fontWeight: 700,
+                fontSize: '22px',
+                color: 'var(--text)',
+                marginBottom: '4px',
+              }}
+            >
+              Request an Invite Code
+            </h2>
+            <p
+              style={{
+                fontSize: '13px',
+                color: 'var(--text-secondary)',
+                marginBottom: '24px',
+                lineHeight: 1.5,
+              }}
+            >
+              We&apos;ll review your request and send you a code.
+            </p>
+
+            {requestSent ? (
+              <div style={{ textAlign: 'center', padding: '16px 0' }}>
+                <p
+                  style={{
+                    fontSize: '14px',
+                    color: 'var(--text)',
+                    fontWeight: 600,
+                    marginBottom: '8px',
+                  }}
+                >
+                  Request sent!
+                </p>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                  We&apos;ll be in touch soon.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowRequestModal(false);
+                    setRequestSent(false);
+                    setRequestName('');
+                    setRequestEmail('');
+                    setRequestSource('');
+                  }}
+                  style={{
+                    marginTop: '16px',
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '12px',
+                    color: 'var(--text-secondary)',
+                    textDecoration: 'underline',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+            ) : (
+              <form
+                onSubmit={handleRequestCode}
+                style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
+              >
+                <div>
+                  <label
+                    htmlFor="requestName"
+                    style={{
+                      display: 'block',
+                      fontSize: '10px',
+                      fontWeight: 600,
+                      letterSpacing: '0.12em',
+                      textTransform: 'uppercase',
+                      color: 'var(--text-secondary)',
+                      marginBottom: '6px',
+                    }}
+                  >
+                    Name
+                  </label>
+                  <input
+                    id="requestName"
+                    type="text"
+                    required
+                    className="form-input"
+                    value={requestName}
+                    onChange={(e) => setRequestName(e.target.value)}
+                    placeholder="Your name"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="requestEmail"
+                    style={{
+                      display: 'block',
+                      fontSize: '10px',
+                      fontWeight: 600,
+                      letterSpacing: '0.12em',
+                      textTransform: 'uppercase',
+                      color: 'var(--text-secondary)',
+                      marginBottom: '6px',
+                    }}
+                  >
+                    Email
+                  </label>
+                  <input
+                    id="requestEmail"
+                    type="email"
+                    required
+                    className="form-input"
+                    value={requestEmail}
+                    onChange={(e) => setRequestEmail(e.target.value)}
+                    placeholder="you@example.com"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="requestSource"
+                    style={{
+                      display: 'block',
+                      fontSize: '10px',
+                      fontWeight: 600,
+                      letterSpacing: '0.12em',
+                      textTransform: 'uppercase',
+                      color: 'var(--text-secondary)',
+                      marginBottom: '6px',
+                    }}
+                  >
+                    Where did you hear about this?
+                  </label>
+                  <input
+                    id="requestSource"
+                    type="text"
+                    required
+                    className="form-input"
+                    value={requestSource}
+                    onChange={(e) => setRequestSource(e.target.value)}
+                    placeholder="A friend, social media, etc."
+                  />
+                </div>
+
+                {requestError && (
+                  <p
+                    style={{
+                      fontSize: '13px',
+                      color: 'var(--tag-red)',
+                      background: 'var(--red-light)',
+                      padding: '10px 14px',
+                      borderLeft: '3px solid var(--tag-red)',
+                    }}
+                  >
+                    {requestError}
+                  </p>
+                )}
+
+                <BtnPrimary
+                  type="submit"
+                  disabled={requestLoading}
+                  style={{ width: '100%', justifyContent: 'center' }}
+                >
+                  {requestLoading ? 'Sending…' : 'Send Request'}
+                </BtnPrimary>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
