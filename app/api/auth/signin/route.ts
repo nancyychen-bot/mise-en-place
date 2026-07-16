@@ -32,6 +32,12 @@ export async function POST(req: NextRequest) {
   });
 
   if (error) {
+    if (error.code === 'email_not_confirmed') {
+      return NextResponse.json(
+        { error: 'Please confirm your email address before signing in.' },
+        { status: 401 }
+      );
+    }
     return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
   }
 
