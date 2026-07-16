@@ -30,7 +30,8 @@ export async function POST(req: NextRequest) {
 
   const { error } = await resend.emails.send({
     from: process.env.EMAIL_FROM!,
-    to: 'nancy@nancychen.xyz',
+    to: 'nancy.y.chen@gmail.com',
+    replyTo: email,
     subject: `Mise en Place — Invite code request from ${name}`,
     text: [
       `Name: ${name}`,
