@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 
+const INVITE_CODE = 'EatHappy';
+
 const SignupSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   displayName: z.string().max(80).optional(),
+  inviteCode: z.string(),
 });
 
 export async function POST(req: NextRequest) {
@@ -24,7 +27,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { email, password, displayName } = parsed.data;
+  const { email, password, displayName, inviteCode } = parsed.data;
+
+  if (inviteCode !== INVITE_CODE) {
+    return NextResponse.json({ error: 'Invalid invite code' }, { status: 403 });
+  }
+
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase.auth.signUp({
