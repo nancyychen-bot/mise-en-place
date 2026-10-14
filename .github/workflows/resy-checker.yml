@@ -7,7 +7,7 @@ on:
 
 concurrency:
   group: resy-checker
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   check:
