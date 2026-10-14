@@ -66,6 +66,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // ── Browser management ─────────────────────────────────────────────
 
 let context = null;
+let useProxy = false;
 
 const proxyConfig = process.env.BRIGHT_DATA_HOST ? {
   proxy: {
@@ -80,11 +81,12 @@ async function launchBrowser() {
     const userDataDir = mkdtempSync(join(tmpdir(), 'resy-chrome-'));
     const isMac = platform === 'darwin';
 
-    if (proxyConfig.proxy) console.log('[resy-check] using Bright Data proxy');
+    const proxy = useProxy && proxyConfig.proxy ? proxyConfig : {};
+    if (proxy.proxy) console.log('[resy-check] launching browser via Bright Data proxy');
 
     context = await chromium.launchPersistentContext(userDataDir, {
       ...(isMac ? { channel: 'chrome', headless: false } : { headless: true }),
-      ...proxyConfig,
+      ...proxy,
       args: [
         '--disable-blink-features=AutomationControlled',
         ...(isMac ? [] : ['--disable-gpu', '--no-sandbox']),
@@ -499,8 +501,16 @@ async function main() {
                     consecutiveFailures = 0;
                     console.log(`[resy-check] ${venue.name}: throttled — re-warming Imperva session`);
                     await warmUpImperva();
+                  } else if (!useProxy && proxyConfig.proxy) {
+                    console.log(`[resy-check] ${venue.name}: still throttled after re-warm — switching to Bright Data proxy for rest of run`);
+                    useProxy = true;
+                    rewarmed = false;
+                    consecutiveFailures = 0;
+                    await closeBrowser();
+                    await launchBrowser();
+                    await warmUpImperva();
                   } else {
-                    console.log(`[resy-check] ${venue.name}: still throttled after re-warm — skipping remaining dates`);
+                    console.log(`[resy-check] ${venue.name}: still throttled${useProxy ? ' on proxy' : ''} — skipping remaining dates`);
                     throttled = true;
                     break;
                   }
