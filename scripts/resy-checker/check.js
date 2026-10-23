@@ -665,8 +665,27 @@ async function main() {
 
 }
 
+// Transient infra errors (Imperva throttle, proxy timeout, Resy 5xx) are expected
+// and will self-resolve on the next 5-min cron — don't fail the workflow and spam
+// email on them. Real errors (code bugs, DB failures, auth issues) still exit 1.
+function isTransientInfraError(err) {
+  const msg = String(err && (err.message || err));
+  return (
+    msg.includes('page.goto') && msg.includes('Timeout') ||  // Imperva stall or proxy dead
+    msg.includes('ERR_HTTP_RESPONSE_CODE_FAILURE') ||         // Resy 5xx via browser fetch
+    msg.includes('http_5') ||                                 // Resy 500/502/503
+    msg.includes('ERR_PROXY_CONNECTION_FAILED') ||
+    msg.includes('ERR_TUNNEL_CONNECTION_FAILED') ||
+    msg.includes('net::ERR_TIMED_OUT')
+  );
+}
+
 main().catch((err) => {
-  console.error('[resy-check] fatal:', err);
   closeBrowser().catch(() => {});
+  if (isTransientInfraError(err)) {
+    console.warn('[resy-check] transient infra error, exiting cleanly for retry next cycle:', err.message);
+    process.exit(0);
+  }
+  console.error('[resy-check] fatal:', err);
   process.exit(1);
 });
