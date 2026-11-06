@@ -124,6 +124,12 @@ It dispatches by `venue.provider` to the matching module in `lib/`. Each provide
 - Filtering raw provider slots to those within `[windowStart, windowEnd]` for the given `date` and `partySize`.
 - Logging and converting transient errors (Imperva throttling, proxy timeout, 5xx) into `{ status: 'error', message }` rather than crashing the whole run. Resy's existing proxy/throttle fallback applies.
 
+**Resy adapter:** calls existing `findResyAvailability` in `lib/resy.ts`.
+
+**SevenRooms adapter:** calls existing `findSevenRoomsAvailability` in `lib/sevenrooms.ts`.
+
+**OpenTable adapter:** the existing OT flow uses Playwright and lives in `scripts/opentable-checker/` — too heavy for a web request. For this feature we add a new lightweight path: fetch the OT restaurant page HTML on the edge (same pattern as `app/api/resolve-opentable/route.ts`) and extract `__NEXT_DATA__` for the given date + party size. When that fails or returns no slots, the adapter returns `{ status: 'error', message: 'OT availability blocked' }` and the UI still provides a direct booking-widget link so the user can click through.
+
 Concurrency pool: max 5 in-flight checks. Per-restaurant soft timeout 20s (returns `error`).
 
 ## UI: `/dashboard/search`
@@ -171,5 +177,6 @@ Behind the existing dashboard auth guard.
 
 - **Infatuation markup changes.** The Infatuation-specific extractor is brittle. Mitigation: always fall back to the generic provider-link extractor, and surface "couldn't find restaurants" clearly so the user can paste names instead.
 - **Provider search quality.** Resy/OpenTable search by name can return wrong venues for ambiguous names. Mitigation: similarity threshold + city match; false positives land on a wrong-but-real booking page which the user will notice immediately.
-- **SevenRooms flakiness.** Expect more `error` statuses here than for Resy/OpenTable. Acceptable for v1.
+- **OpenTable light-scrape reliability.** The lightweight OT path (page HTML → `__NEXT_DATA__`) is not as reliable as the Playwright flow. Expect OT rows to show `error` more often than Resy. Users can still click through to book — this is acceptable for v1.
+- **SevenRooms flakiness.** Expect more `error` statuses here than for Resy. Acceptable for v1.
 - **Rate limiting.** Running 20 Resy checks back-to-back can trigger Imperva. The 5-concurrent pool + existing proxy fallback should contain it, but worth watching after launch.
