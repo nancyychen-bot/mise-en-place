@@ -12,10 +12,6 @@ export interface ResolveOptions {
   resyApiKey: string;
 }
 
-function hostOf(url: string): string {
-  try { return new URL(url).hostname.toLowerCase(); } catch { return ''; }
-}
-
 function providerFromHost(host: string): Provider | null {
   if (host.endsWith('resy.com')) return 'resy';
   if (host.endsWith('opentable.com')) return 'opentable';

@@ -164,7 +164,7 @@ export function SearchClient() {
 }
 
 function ResultRow({ row }: { row: RowState }) {
-  const { venue, result } = row;
+  const { venue } = row;
   return (
     <tr className="border-b align-top">
       <td className="py-2 pr-2">{venue.displayName}</td>
