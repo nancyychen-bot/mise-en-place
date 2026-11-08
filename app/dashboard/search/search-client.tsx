@@ -43,10 +43,12 @@ export function SearchClient() {
       });
       if (!res.ok || !res.body) {
         const text = await res.text();
+        let message = text || `HTTP ${res.status}`;
         try {
-          const j = JSON.parse(text);
-          throw new Error(j.error ?? `HTTP ${res.status}`);
-        } catch { throw new Error(text || `HTTP ${res.status}`); }
+          const j = JSON.parse(text) as { error?: string };
+          if (j?.error) message = j.error;
+        } catch { /* keep text as-is */ }
+        throw new Error(message);
       }
       const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
       let buf = '';
