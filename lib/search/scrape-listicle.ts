@@ -65,19 +65,51 @@ const BROWSER_HEADERS: Record<string, string> = {
   'Upgrade-Insecure-Requests': '1',
 };
 
+async function fetchViaFirecrawl(url: string): Promise<string> {
+  const key = process.env.FIRECRAWL_API_KEY;
+  if (!key) throw new Error('firecrawl_unavailable: FIRECRAWL_API_KEY not set');
+  const res = await fetch('https://api.firecrawl.dev/v1/scrape', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${key}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ url, formats: ['html'], onlyMainContent: false }),
+  });
+  if (!res.ok) throw new Error(`firecrawl_http_${res.status}`);
+  const data = await res.json() as { data?: { html?: string } };
+  const html = data?.data?.html;
+  if (!html) throw new Error('firecrawl_no_html');
+  return html;
+}
+
 export async function scrapeListicle(url: string): Promise<RawEntry[]> {
-  const res = await fetch(url, { headers: BROWSER_HEADERS, redirect: 'follow' });
-  if (res.status === 404) {
-    throw new Error(
-      `article_fetch_failed: HTTP 404 (the site may be blocking server requests — try pasting restaurant names directly)`
-    );
+  // Try direct fetch first — works for most sites and avoids the Firecrawl round-trip.
+  let html: string | null = null;
+  let directStatus = 0;
+  try {
+    const res = await fetch(url, { headers: BROWSER_HEADERS, redirect: 'follow' });
+    directStatus = res.status;
+    if (res.ok) html = await res.text();
+  } catch {
+    directStatus = -1;
   }
-  if (res.status === 403) {
-    throw new Error(
-      `article_fetch_failed: HTTP 403 (blocked by the site's bot protection — try pasting restaurant names directly)`
-    );
+
+  // Fall back to Firecrawl when the site blocked us (403/404/429) or the direct fetch threw.
+  if (html === null) {
+    const blocked = directStatus === 0 || directStatus === -1 || directStatus === 403 || directStatus === 404 || directStatus === 429;
+    if (!blocked) {
+      throw new Error(`article_fetch_failed: HTTP ${directStatus}`);
+    }
+    try {
+      html = await fetchViaFirecrawl(url);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(
+        `article_fetch_failed: direct=${directStatus}, firecrawl=${msg} — try pasting restaurant names directly`
+      );
+    }
   }
-  if (!res.ok) throw new Error(`article_fetch_failed: HTTP ${res.status}`);
-  const html = await res.text();
+
   return scrapeListicleHtml(html);
 }
